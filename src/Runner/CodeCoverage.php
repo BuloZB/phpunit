@@ -10,9 +10,9 @@
 namespace PHPUnit\Runner;
 
 use function assert;
-use function file_put_contents;
 use function sprintf;
 use function sys_get_temp_dir;
+use DateTimeImmutable;
 use PHPUnit\Event\Facade as EventFacade;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\TextUI\Configuration\CodeCoverageFilterRegistry;
@@ -23,23 +23,19 @@ use SebastianBergmann\CodeCoverage\Driver\Driver;
 use SebastianBergmann\CodeCoverage\Driver\Selector;
 use SebastianBergmann\CodeCoverage\Exception as CodeCoverageException;
 use SebastianBergmann\CodeCoverage\Filter;
-use SebastianBergmann\CodeCoverage\Report\Clover as CloverReport;
-use SebastianBergmann\CodeCoverage\Report\Cobertura as CoberturaReport;
-use SebastianBergmann\CodeCoverage\Report\Crap4j as Crap4jReport;
+use SebastianBergmann\CodeCoverage\Report\Facade as ReportFacade;
 use SebastianBergmann\CodeCoverage\Report\Html\Colors;
 use SebastianBergmann\CodeCoverage\Report\Html\CustomCssFile;
-use SebastianBergmann\CodeCoverage\Report\Html\Facade as HtmlReport;
-use SebastianBergmann\CodeCoverage\Report\OpenClover as OpenCloverReport;
-use SebastianBergmann\CodeCoverage\Report\PHP as PhpReport;
-use SebastianBergmann\CodeCoverage\Report\Text as TextReport;
 use SebastianBergmann\CodeCoverage\Report\Thresholds;
-use SebastianBergmann\CodeCoverage\Report\Xml\Facade as XmlReport;
+use SebastianBergmann\CodeCoverage\Serialization\Serializer;
 use SebastianBergmann\CodeCoverage\StaticAnalysis\CacheWarmer;
 use SebastianBergmann\CodeCoverage\Test\Target\TargetCollection;
 use SebastianBergmann\CodeCoverage\Test\Target\ValidationFailure;
-use SebastianBergmann\CodeCoverage\Test\TestSize\TestSize;
-use SebastianBergmann\CodeCoverage\Test\TestStatus\TestStatus;
+use SebastianBergmann\CodeCoverage\Test\TestSize;
+use SebastianBergmann\CodeCoverage\Test\TestStatus;
+use SebastianBergmann\CodeCoverage\Version as CodeCoverageVersion;
 use SebastianBergmann\Comparator\Comparator;
+use SebastianBergmann\Environment\Runtime;
 use SebastianBergmann\Timer\NoActiveTimerException;
 use SebastianBergmann\Timer\Timer;
 
@@ -185,14 +181,14 @@ final class CodeCoverage
             return;
         }
 
-        $size = TestSize::unknown();
+        $size = TestSize::Unknown;
 
         if ($test->size()->isSmall()) {
-            $size = TestSize::small();
+            $size = TestSize::Small;
         } elseif ($test->size()->isMedium()) {
-            $size = TestSize::medium();
+            $size = TestSize::Medium;
         } elseif ($test->size()->isLarge()) {
-            $size = TestSize::large();
+            $size = TestSize::Large;
         }
 
         $this->test = $test;
@@ -214,14 +210,14 @@ final class CodeCoverage
         }
 
         $time             = $this->timer()->stop()->asSeconds();
-        $status           = TestStatus::unknown();
+        $status           = TestStatus::Unknown;
         $this->collecting = false;
 
         if ($this->test !== null) {
             if ($this->test->status()->isSuccess()) {
-                $status = TestStatus::success();
+                $status = TestStatus::Success;
             } else {
-                $status = TestStatus::failure();
+                $status = TestStatus::Failure;
             }
         }
 
@@ -276,28 +272,24 @@ final class CodeCoverage
         if ($configuration->hasCoveragePhp()) {
             $this->codeCoverageGenerationStart($printer, 'PHP');
 
-            try {
-                $writer = new PhpReport;
-                $writer->process($this->codeCoverage(), $configuration->coveragePhp());
+            $serializer = new Serializer;
 
-                $this->codeCoverageGenerationSucceeded($printer);
+            $serializer->serialize($configuration->coveragePhp(), $this->codeCoverage(), $configuration->includeGitInformation());
 
-                unset($writer);
-            } catch (CodeCoverageException $e) {
-                $this->codeCoverageGenerationFailed($printer, $e);
-            }
+            $this->codeCoverageGenerationSucceeded($printer);
+
+            unset($serializer);
         }
+
+        $facade = ReportFacade::fromObject($this->codeCoverage());
 
         if ($configuration->hasCoverageClover()) {
             $this->codeCoverageGenerationStart($printer, 'Clover XML');
 
             try {
-                $writer = new CloverReport;
-                $writer->process($this->codeCoverage(), $configuration->coverageClover(), 'Clover Coverage');
+                $facade->renderClover($configuration->coverageClover(), 'Clover Coverage');
 
                 $this->codeCoverageGenerationSucceeded($printer);
-
-                unset($writer);
             } catch (CodeCoverageException $e) {
                 $this->codeCoverageGenerationFailed($printer, $e);
             }
@@ -307,12 +299,9 @@ final class CodeCoverage
             $this->codeCoverageGenerationStart($printer, 'OpenClover XML');
 
             try {
-                $writer = new OpenCloverReport;
-                $writer->process($this->codeCoverage(), $configuration->coverageOpenClover(), 'OpenClover Coverage');
+                $facade->renderOpenClover($configuration->coverageOpenClover(), 'OpenClover Coverage');
 
                 $this->codeCoverageGenerationSucceeded($printer);
-
-                unset($writer);
             } catch (CodeCoverageException $e) {
                 $this->codeCoverageGenerationFailed($printer, $e);
             }
@@ -322,12 +311,9 @@ final class CodeCoverage
             $this->codeCoverageGenerationStart($printer, 'Cobertura XML');
 
             try {
-                $writer = new CoberturaReport;
-                $writer->process($this->codeCoverage(), $configuration->coverageCobertura());
+                $facade->renderCobertura($configuration->coverageCobertura());
 
                 $this->codeCoverageGenerationSucceeded($printer);
-
-                unset($writer);
             } catch (CodeCoverageException $e) {
                 $this->codeCoverageGenerationFailed($printer, $e);
             }
@@ -337,12 +323,9 @@ final class CodeCoverage
             $this->codeCoverageGenerationStart($printer, 'Crap4J XML');
 
             try {
-                $writer = new Crap4jReport($configuration->coverageCrap4jThreshold());
-                $writer->process($this->codeCoverage(), $configuration->coverageCrap4j());
+                $facade->renderCrap4j($configuration->coverageCrap4j(), $configuration->coverageCrap4jThreshold());
 
                 $this->codeCoverageGenerationSucceeded($printer);
-
-                unset($writer);
             } catch (CodeCoverageException $e) {
                 $this->codeCoverageGenerationFailed($printer, $e);
             }
@@ -358,7 +341,8 @@ final class CodeCoverage
                     $customCssFile = CustomCssFile::from($configuration->coverageHtmlCustomCssFile());
                 }
 
-                $writer = new HtmlReport(
+                $facade->renderHtml(
+                    $configuration->coverageHtml(),
                     sprintf(
                         ' and <a href="https://phpunit.de/">PHPUnit %s</a>',
                         Version::id(),
@@ -377,31 +361,33 @@ final class CodeCoverage
                     $customCssFile,
                 );
 
-                $writer->process($this->codeCoverage(), $configuration->coverageHtml());
-
                 $this->codeCoverageGenerationSucceeded($printer);
-
-                unset($writer);
             } catch (CodeCoverageException $e) {
                 $this->codeCoverageGenerationFailed($printer, $e);
             }
         }
 
         if ($configuration->hasCoverageText()) {
-            $processor = new TextReport(
-                Thresholds::default(),
-                $configuration->coverageTextShowUncoveredFiles(),
-                $configuration->coverageTextShowOnlySummary(),
-            );
-
-            $textReport = $processor->process($this->codeCoverage(), $configuration->colors());
-
             if ($configuration->coverageText() === 'php://stdout') {
                 if (!$configuration->noOutput() && !$configuration->debug()) {
-                    $printer->print($textReport);
+                    $printer->print(
+                        $facade->renderText(
+                            null,
+                            Thresholds::default(),
+                            $configuration->coverageTextShowUncoveredFiles(),
+                            $configuration->coverageTextShowOnlySummary(),
+                            $configuration->colors(),
+                        ),
+                    );
                 }
             } else {
-                file_put_contents($configuration->coverageText(), $textReport);
+                $facade->renderText(
+                    $configuration->coverageText(),
+                    Thresholds::default(),
+                    $configuration->coverageTextShowUncoveredFiles(),
+                    $configuration->coverageTextShowOnlySummary(),
+                    $configuration->colors(),
+                );
             }
         }
 
@@ -409,12 +395,20 @@ final class CodeCoverage
             $this->codeCoverageGenerationStart($printer, 'PHPUnit XML');
 
             try {
-                $writer = new XmlReport(Version::id(), $configuration->coverageXmlIncludeSource());
-                $writer->process($this->codeCoverage(), $configuration->coverageXml());
+                $driverInformation = $this->codeCoverage->driverInformation();
+
+                $facade->renderXml(
+                    $configuration->coverageXml(),
+                    $configuration->coverageXmlIncludeSource(),
+                    new Runtime,
+                    new DateTimeImmutable,
+                    Version::id(),
+                    CodeCoverageVersion::id(),
+                    $driverInformation['name'],
+                    $driverInformation['version'],
+                );
 
                 $this->codeCoverageGenerationSucceeded($printer);
-
-                unset($writer);
             } catch (CodeCoverageException $e) {
                 $this->codeCoverageGenerationFailed($printer, $e);
             }
