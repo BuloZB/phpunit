@@ -365,6 +365,17 @@ final readonly class Loader
             $deprecationTriggers['methods'][] = $methodNode->textContent;
         }
 
+        $issueTriggerResolvers     = [];
+        $issueTriggerResolverNodes = $xpath->query('source/issueTriggerResolvers/issueTriggerResolver');
+
+        assert($issueTriggerResolverNodes instanceof DOMNodeList);
+
+        foreach ($issueTriggerResolverNodes as $node) {
+            assert($node instanceof DOMElement);
+
+            $issueTriggerResolvers[] = $node->getAttribute('className');
+        }
+
         return new Source(
             $baseline,
             false,
@@ -386,6 +397,7 @@ final readonly class Loader
             $ignoreDirectDeprecations,
             $ignoreIndirectDeprecations,
             $identifyIssueTrigger,
+            $issueTriggerResolvers,
         );
     }
 
@@ -473,21 +485,39 @@ final readonly class Loader
         if ($element !== null) {
             $defaultColors     = Colors::default();
             $defaultThresholds = Thresholds::default();
+            $outputDirectory   = $this->parseStringAttribute($element, 'outputDirectory');
 
-            $html = new CodeCoverageHtml(
-                new Directory(
+            if ($outputDirectory !== null) {
+                $outputDirectory = new Directory(
                     $this->toAbsolutePath(
                         $filename,
-                        (string) $this->parseStringAttribute($element, 'outputDirectory'),
+                        $outputDirectory,
                     ),
-                ),
+                );
+            }
+
+            $html = new CodeCoverageHtml(
+                $outputDirectory,
                 $this->parseIntegerAttribute($element, 'lowUpperBound', $defaultThresholds->lowUpperBound()),
                 $this->parseIntegerAttribute($element, 'highLowerBound', $defaultThresholds->highLowerBound()),
                 $this->parseStringAttributeWithDefault($element, 'colorSuccessLow', $defaultColors->successLow()),
+                $this->parseStringAttributeWithDefault($element, 'colorSuccessLowDark', $defaultColors->successLowDark()),
                 $this->parseStringAttributeWithDefault($element, 'colorSuccessMedium', $defaultColors->successMedium()),
+                $this->parseStringAttributeWithDefault($element, 'colorSuccessMediumDark', $defaultColors->successMediumDark()),
                 $this->parseStringAttributeWithDefault($element, 'colorSuccessHigh', $defaultColors->successHigh()),
+                $this->parseStringAttributeWithDefault($element, 'colorSuccessHighDark', $defaultColors->successHighDark()),
+                $this->parseStringAttributeWithDefault($element, 'colorSuccessBar', $defaultColors->successBar()),
+                $this->parseStringAttributeWithDefault($element, 'colorSuccessBarDark', $defaultColors->successBarDark()),
                 $this->parseStringAttributeWithDefault($element, 'colorWarning', $defaultColors->warning()),
+                $this->parseStringAttributeWithDefault($element, 'colorWarningDark', $defaultColors->warningDark()),
+                $this->parseStringAttributeWithDefault($element, 'colorWarningBar', $defaultColors->warningBar()),
+                $this->parseStringAttributeWithDefault($element, 'colorWarningBarDark', $defaultColors->warningBarDark()),
                 $this->parseStringAttributeWithDefault($element, 'colorDanger', $defaultColors->danger()),
+                $this->parseStringAttributeWithDefault($element, 'colorDangerDark', $defaultColors->dangerDark()),
+                $this->parseStringAttributeWithDefault($element, 'colorDangerBar', $defaultColors->dangerBar()),
+                $this->parseStringAttributeWithDefault($element, 'colorDangerBarDark', $defaultColors->dangerBarDark()),
+                $this->parseStringAttributeWithDefault($element, 'colorBreadcrumbs', $defaultColors->breadcrumbs()),
+                $this->parseStringAttributeWithDefault($element, 'colorBreadcrumbsDark', $defaultColors->breadcrumbsDark()),
                 $this->parseStringAttribute($element, 'customCssFile'),
             );
         }
