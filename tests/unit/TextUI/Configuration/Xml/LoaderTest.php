@@ -56,6 +56,7 @@ final class LoaderTest extends TestCase
             'failOnRisky'                  => ['failOnRisky', 'true', true],
             'processIsolation'             => ['processIsolation', 'true', true],
             'reverseDefectList'            => ['reverseDefectList', 'true', true],
+            'diffContext'                  => ['diffContext', '5', 5],
         ];
     }
 
@@ -71,7 +72,7 @@ final class LoaderTest extends TestCase
     {
         $phpunit = $this->configuration('configuration.colors.true.xml')->phpunit();
 
-        $this->assertEquals(Configuration::COLOR_AUTO, $phpunit->colors());
+        $this->assertEquals(Configuration::COLOR_ALWAYS, $phpunit->colors());
     }
 
     public function testShouldReadColorsWhenFalseInConfigurationFile(): void
@@ -366,12 +367,13 @@ final class LoaderTest extends TestCase
         $this->assertSame('never', $phpunit->colors());
         $this->assertFalse($phpunit->stderr());
         $this->assertFalse($phpunit->requireCoverageMetadata());
-        $this->assertFalse($phpunit->stopOnFailure());
-        $this->assertFalse($phpunit->stopOnWarning());
+        $this->assertSame(0, $phpunit->stopOnFailure());
+        $this->assertSame(0, $phpunit->stopOnWarning());
         $this->assertFalse($phpunit->beStrictAboutTestsThatDoNotTestAnything());
         $this->assertFalse($phpunit->beStrictAboutCoverageMetadata());
         $this->assertFalse($phpunit->beStrictAboutOutputDuringTests());
         $this->assertSame(123, $phpunit->defaultTimeLimit());
+        $this->assertSame(7, $phpunit->diffContext());
         $this->assertFalse($phpunit->enforceTimeLimit());
         $this->assertSame('/tmp', $phpunit->extensionsDirectory());
         $this->assertSame('My Test Suite', $phpunit->defaultTestSuite());

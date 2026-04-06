@@ -1000,15 +1000,15 @@ final readonly class Loader
             $this->parseBooleanAttribute($document->documentElement, 'failOnRisky', false),
             $this->parseBooleanAttribute($document->documentElement, 'failOnSkipped', false),
             $this->parseBooleanAttribute($document->documentElement, 'failOnWarning', false),
-            $this->parseBooleanAttribute($document->documentElement, 'stopOnDefect', false),
-            $this->parseBooleanAttribute($document->documentElement, 'stopOnDeprecation', false),
-            $this->parseBooleanAttribute($document->documentElement, 'stopOnError', false),
-            $this->parseBooleanAttribute($document->documentElement, 'stopOnFailure', false),
-            $this->parseBooleanAttribute($document->documentElement, 'stopOnIncomplete', false),
-            $this->parseBooleanAttribute($document->documentElement, 'stopOnNotice', false),
-            $this->parseBooleanAttribute($document->documentElement, 'stopOnRisky', false),
-            $this->parseBooleanAttribute($document->documentElement, 'stopOnSkipped', false),
-            $this->parseBooleanAttribute($document->documentElement, 'stopOnWarning', false),
+            (int) $this->parseBooleanAttribute($document->documentElement, 'stopOnDefect', false),
+            (int) $this->parseBooleanAttribute($document->documentElement, 'stopOnDeprecation', false),
+            (int) $this->parseBooleanAttribute($document->documentElement, 'stopOnError', false),
+            (int) $this->parseBooleanAttribute($document->documentElement, 'stopOnFailure', false),
+            (int) $this->parseBooleanAttribute($document->documentElement, 'stopOnIncomplete', false),
+            (int) $this->parseBooleanAttribute($document->documentElement, 'stopOnNotice', false),
+            (int) $this->parseBooleanAttribute($document->documentElement, 'stopOnRisky', false),
+            (int) $this->parseBooleanAttribute($document->documentElement, 'stopOnSkipped', false),
+            (int) $this->parseBooleanAttribute($document->documentElement, 'stopOnWarning', false),
             $extensionsDirectory,
             $this->parseBooleanAttribute($document->documentElement, 'beStrictAboutChangesToGlobalState', false),
             $this->parseBooleanAttribute($document->documentElement, 'beStrictAboutOutputDuringTests', false),
@@ -1030,6 +1030,7 @@ final readonly class Loader
             $this->parseBooleanAttribute($document->documentElement, 'controlGarbageCollector', false),
             $this->parseIntegerAttribute($document->documentElement, 'numberOfTestsBeforeGarbageCollection', 100),
             $shortenArraysForExportThreshold,
+            $this->parseIntegerAttribute($document->documentElement, 'diffContext', 3),
         );
     }
 
@@ -1038,10 +1039,8 @@ final readonly class Loader
         $colors = Configuration::COLOR_DEFAULT;
 
         if ($document->documentElement->hasAttribute('colors')) {
-            /* only allow boolean for compatibility with previous versions
-              'always' only allowed from command line */
             if ($this->booleanFromString($document->documentElement->getAttribute('colors'), false)) {
-                $colors = Configuration::COLOR_AUTO;
+                $colors = Configuration::COLOR_ALWAYS;
             } else {
                 $colors = Configuration::COLOR_NEVER;
             }
