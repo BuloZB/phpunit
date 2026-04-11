@@ -32,12 +32,15 @@ Selection:
   --uses <name>                        Only run tests that intend to use <name>
   --requires-php-extension <name>      Only run tests that require PHP extension <name>
   --list-test-files                    List available test files
+  --list-test-ids                      List available tests as test IDs
   --list-tests                         List available tests
   --list-tests-xml <file>              List available tests in XML format
   --filter <pattern>                   Filter which tests to run
   --exclude-filter <pattern>           Exclude tests for the specified filter pattern
   --test-suffix <suffixes>             Only search for test in files with specified suffix(es). Default: Test.php,.phpt
   --test-files-file <file>             Only run test files listed in file (one file by line)
+  --run-test-id <test-id>              Only run the test identified by the specified test ID
+  --test-id-filter-file <file>         Only run tests listed by test ID in file (one test ID per line)
 
 Execution:
 
@@ -89,7 +92,11 @@ Execution:
   --do-not-cache-result                Do not write test results to cache file
 
   --order-by <order>                   Run tests in order: default|defects|depends|duration|no-depends|random|reverse|size
+  --resolve-dependencies               Alias for "--order-by depends"
+  --ignore-dependencies                Alias for "--order-by no-depends"
+  --random-order                       Alias for "--order-by random"
   --random-order-seed <N>              Use the specified random seed when running tests in random order
+  --reverse-order                      Alias for "--order-by reverse"
 
 Reporting:
 

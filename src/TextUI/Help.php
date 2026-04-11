@@ -181,12 +181,15 @@ final class Help
                 ['arg' => '--uses <name>', 'desc' => 'Only run tests that intend to use <name>'],
                 ['arg' => '--requires-php-extension <name>', 'desc' => 'Only run tests that require PHP extension <name>'],
                 ['arg' => '--list-test-files', 'desc' => 'List available test files'],
+                ['arg' => '--list-test-ids', 'desc' => 'List available tests as test IDs'],
                 ['arg' => '--list-tests', 'desc' => 'List available tests'],
                 ['arg' => '--list-tests-xml <file>', 'desc' => 'List available tests in XML format'],
                 ['arg' => '--filter <pattern>', 'desc' => 'Filter which tests to run'],
                 ['arg' => '--exclude-filter <pattern>', 'desc' => 'Exclude tests for the specified filter pattern'],
                 ['arg' => '--test-suffix <suffixes>', 'desc' => 'Only search for test in files with specified suffix(es). Default: Test.php,.phpt'],
                 ['arg' => '--test-files-file <file>', 'desc' => 'Only run test files listed in file (one file by line)'],
+                ['arg' => '--run-test-id <test-id>', 'desc' => 'Only run the test identified by the specified test ID'],
+                ['arg' => '--test-id-filter-file <file>', 'desc' => 'Only run tests listed by test ID in file (one test ID per line)'],
             ],
 
             'Execution' => [
@@ -244,7 +247,11 @@ final class Help
                 ['spacer' => ''],
 
                 ['arg' => '--order-by <order>', 'desc' => 'Run tests in order: default|defects|depends|duration|no-depends|random|reverse|size'],
+                ['arg' => '--resolve-dependencies', 'desc' => 'Alias for "--order-by depends"'],
+                ['arg' => '--ignore-dependencies', 'desc' => 'Alias for "--order-by no-depends"'],
+                ['arg' => '--random-order', 'desc' => 'Alias for "--order-by random"'],
                 ['arg' => '--random-order-seed <N>', 'desc' => 'Use the specified random seed when running tests in random order'],
+                ['arg' => '--reverse-order', 'desc' => 'Alias for "--order-by reverse"'],
             ],
 
             'Reporting' => [

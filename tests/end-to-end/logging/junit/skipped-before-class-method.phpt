@@ -15,5 +15,5 @@ require_once __DIR__ . '/../../../bootstrap.php';
 --EXPECTF--
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuites>
-  <testsuite name="PHPUnit\TestFixture\TestRunnerStopping\SkippedBeforeClassTest" file="%sSkippedBeforeClassTest.php"/>
+  <testsuite name="PHPUnit\TestFixture\TestRunnerStopping\SkippedBeforeClassTest" file="%sSkippedBeforeClassTest.php" tests="1" assertions="0" errors="0" failures="0" skipped="1" time="0.000000"/>
 </testsuites>

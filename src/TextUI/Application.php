@@ -11,6 +11,7 @@ namespace PHPUnit\TextUI;
 
 use const PHP_EOL;
 use const PHP_VERSION;
+use const SIGINT;
 use function array_reverse;
 use function assert;
 use function class_exists;
@@ -19,9 +20,12 @@ use function defined;
 use function dirname;
 use function explode;
 use function function_exists;
+use function getmypid;
 use function in_array;
 use function is_file;
 use function method_exists;
+use function pcntl_async_signals;
+use function pcntl_signal;
 use function printf;
 use function realpath;
 use function sprintf;
@@ -74,6 +78,7 @@ use PHPUnit\TextUI\Command\CheckPhpConfigurationCommand;
 use PHPUnit\TextUI\Command\GenerateConfigurationCommand;
 use PHPUnit\TextUI\Command\ListGroupsCommand;
 use PHPUnit\TextUI\Command\ListTestFilesCommand;
+use PHPUnit\TextUI\Command\ListTestIdsCommand;
 use PHPUnit\TextUI\Command\ListTestsAsTextCommand;
 use PHPUnit\TextUI\Command\ListTestsAsXmlCommand;
 use PHPUnit\TextUI\Command\ListTestSuitesCommand;
@@ -198,11 +203,20 @@ final readonly class Application
 
             EventFacade::instance()->seal();
 
-            ErrorHandler::instance()->registerDeprecationHandler();
+            ErrorHandler::instance()->registerForNonTestCaseContext();
 
             $testSuite = $this->buildTestSuite($configuration);
 
-            ErrorHandler::instance()->restoreDeprecationHandler();
+            if ($configuration->hasTestIdFilterFile() && !is_file($configuration->testIdFilterFile())) {
+                $this->exitWithErrorMessage(
+                    sprintf(
+                        'Test ID filter file "%s" not found',
+                        $configuration->testIdFilterFile(),
+                    ),
+                );
+            }
+
+            ErrorHandler::instance()->restoreForNonTestCaseContext();
 
             $this->executeCommandsThatRequireTheTestSuite($configuration, $cliConfiguration, $testSuite);
 
@@ -226,6 +240,7 @@ final readonly class Application
 
             $this->configureDeprecationTriggers($configuration);
             $this->configureIssueTriggerResolvers($configuration);
+            $this->registerInterruptHandler();
 
             $timer = new Timer;
             $timer->start();
@@ -284,6 +299,18 @@ final readonly class Application
             }
 
             $result = TestResultFacade::result();
+
+            if (TestResultFacade::wasInterrupted()) {
+                if (!$extensionReplacesResultOutput && !$configuration->debug()) {
+                    $printer->print(PHP_EOL . PHP_EOL);
+                }
+
+                $printer->print('Test execution was interrupted by a signal.');
+
+                if ($extensionReplacesResultOutput || $configuration->debug()) {
+                    $printer->print(PHP_EOL);
+                }
+            }
 
             if (!$extensionReplacesResultOutput && !$configuration->debug()) {
                 OutputFacade::printResult(
@@ -478,6 +505,18 @@ final readonly class Application
         if ($cliConfiguration->listGroups()) {
             $this->execute(
                 new ListGroupsCommand(
+                    $this->filteredTests(
+                        $configuration,
+                        $testSuite,
+                    ),
+                ),
+                true,
+            );
+        }
+
+        if ($cliConfiguration->listTestIds()) {
+            $this->execute(
+                new ListTestIdsCommand(
                     $this->filteredTests(
                         $configuration,
                         $testSuite,
@@ -730,6 +769,30 @@ final readonly class Application
     /**
      * @codeCoverageIgnore
      */
+    private function registerInterruptHandler(): void
+    {
+        if (!function_exists('pcntl_async_signals')) {
+            return;
+        }
+
+        $pid = getmypid();
+
+        pcntl_async_signals(true);
+
+        pcntl_signal(SIGINT, static function () use ($pid): void
+        {
+            if (getmypid() !== $pid) {
+                return;
+            }
+
+            if (TestResultFacade::wasInterrupted()) {
+                exit(2);
+            }
+
+            TestResultFacade::interrupt();
+        });
+    }
+
     private function exitWithCrashMessage(Throwable $t): never
     {
         $message = $t->getMessage();

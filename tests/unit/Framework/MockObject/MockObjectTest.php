@@ -52,7 +52,7 @@ final class MockObjectTest extends TestDoubleTestCase
         $double->expects($this->never())->method('doSomething');
 
         $this->assertThatMockObjectExpectationFails(
-            AnInterface::class . '::doSomething(): bool was not expected to be called.',
+            AnInterface::class . '::doSomething(): bool was not expected to be called, actually called 1 time.',
             $double,
             'doSomething',
         );
@@ -108,7 +108,7 @@ final class MockObjectTest extends TestDoubleTestCase
         $double->doSomething();
 
         $this->assertThatMockObjectExpectationFails(
-            AnInterface::class . '::doSomething(): bool was not expected to be called more than once.',
+            AnInterface::class . '::doSomething(): bool was not expected to be called more than once, actually called 2 times.',
             $double,
             'doSomething',
         );
@@ -226,7 +226,7 @@ final class MockObjectTest extends TestDoubleTestCase
         $double->doSomething();
 
         $this->assertThatMockObjectExpectationFails(
-            AnInterface::class . '::doSomething(): bool was not expected to be called more than 2 times.',
+            AnInterface::class . '::doSomething(): bool was not expected to be called more than 2 times, actually called 3 times.',
             $double,
             'doSomething',
         );
@@ -736,7 +736,7 @@ EOT,
         $double->doSomething();
 
         $this->assertThatMockObjectExpectationFails(
-            InterfaceWithReturnTypeDeclaration::class . '::doSomethingElse(0): int was not expected to be called.',
+            InterfaceWithReturnTypeDeclaration::class . '::doSomethingElse(0): int was not expected to be called, actually called 1 time.',
             $double,
             'doSomethingElse',
             [0],
@@ -835,6 +835,50 @@ EOT,
             $double->expects($this->once())->method('doSomethingElse')->with(1)->with(2);
         } catch (MethodParametersAlreadyConfiguredException $e) {
             $this->assertSame('Method parameters already configured', $e->getMessage());
+
+            return;
+        } finally {
+            $this->resetMockObjects();
+        }
+
+        $this->fail();
+    }
+
+    public function testMethodParametersCanOnlyBeConfiguredByOneMatcherForWith(): void
+    {
+        $double = $this->createMock(InterfaceWithReturnTypeDeclaration::class);
+
+        $double->expects($this->once())->method('doSomethingElse')->with(1)->willReturn(1);
+
+        try {
+            $double->expects($this->once())->method('doSomethingElse')->with(2)->willReturn(2);
+        } catch (MethodParametersAlreadyConfiguredForAnotherMatcherException $e) {
+            $this->assertSame(
+                'Parameters for method "doSomethingElse" are already configured for another matcher. ' .
+                'with() configures an expectation (the method must be called with the specified arguments), ' .
+                'it does not select a return value based on arguments. ' .
+                'Use willReturnMap() to return different values based on arguments.',
+                $e->getMessage(),
+            );
+
+            return;
+        } finally {
+            $this->resetMockObjects();
+        }
+
+        $this->fail();
+    }
+
+    public function testMethodParametersCanOnlyBeConfiguredByOneMatcherForWithAnyParameters(): void
+    {
+        $double = $this->createMock(InterfaceWithReturnTypeDeclaration::class);
+
+        $double->expects($this->once())->method('doSomethingElse')->with(1)->willReturn(1);
+
+        try {
+            $double->expects($this->once())->method('doSomethingElse')->withAnyParameters()->willReturn(2);
+        } catch (MethodParametersAlreadyConfiguredForAnotherMatcherException $e) {
+            $this->assertStringContainsString('doSomethingElse', $e->getMessage());
 
             return;
         } finally {

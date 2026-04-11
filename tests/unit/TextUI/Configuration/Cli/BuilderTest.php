@@ -53,6 +53,46 @@ final class BuilderTest extends TestCase
         $configuration->testFilesFile();
     }
 
+    #[TestDox('--test-id-filter-file test-ids.txt')]
+    public function testTestIdFile(): void
+    {
+        $configuration = (new Builder)->fromParameters(['--test-id-filter-file', 'test-ids.txt']);
+
+        $this->assertTrue($configuration->hasTestIdFile());
+        $this->assertSame('test-ids.txt', $configuration->testIdFile());
+    }
+
+    public function testTestIdFileMayNotBeConfigured(): void
+    {
+        $configuration = (new Builder)->fromParameters([]);
+
+        $this->assertFalse($configuration->hasTestIdFile());
+
+        $this->expectException(Exception::class);
+
+        $configuration->testIdFile();
+    }
+
+    #[TestDox('--run-test-id Foo::testBar')]
+    public function testTestIdFilter(): void
+    {
+        $configuration = (new Builder)->fromParameters(['--run-test-id', 'Foo::testBar']);
+
+        $this->assertTrue($configuration->hasTestIdFilter());
+        $this->assertSame('Foo::testBar', $configuration->testIdFilter());
+    }
+
+    public function testTestIdFilterMayNotBeConfigured(): void
+    {
+        $configuration = (new Builder)->fromParameters([]);
+
+        $this->assertFalse($configuration->hasTestIdFilter());
+
+        $this->expectException(Exception::class);
+
+        $configuration->testIdFilter();
+    }
+
     #[TestDox('--all')]
     public function testAll(): void
     {
@@ -914,6 +954,21 @@ final class BuilderTest extends TestCase
         $configuration = (new Builder)->fromParameters(['--list-test-files']);
 
         $this->assertTrue($configuration->listTestFiles());
+    }
+
+    #[TestDox('--list-test-ids')]
+    public function testListTestIds(): void
+    {
+        $configuration = (new Builder)->fromParameters(['--list-test-ids']);
+
+        $this->assertTrue($configuration->listTestIds());
+    }
+
+    public function testListTestIdsMayNotBeConfigured(): void
+    {
+        $configuration = (new Builder)->fromParameters([]);
+
+        $this->assertFalse($configuration->listTestIds());
     }
 
     #[TestDox('--list-tests')]
@@ -2733,7 +2788,7 @@ final class BuilderTest extends TestCase
     #[TestDox('--random-order-seed')]
     public function testRandomOrderSeed(): void
     {
-        $configuration = (new Builder)->fromParameters(['--random-order-seed', '1234']);
+        $configuration = (new Builder)->fromParameters(['--random-order', '--random-order-seed', '1234']);
 
         $this->assertTrue($configuration->hasRandomOrderSeed());
         $this->assertSame(1234, $configuration->randomOrderSeed());

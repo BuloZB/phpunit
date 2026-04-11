@@ -93,6 +93,7 @@ final class Builder
         'list-groups',
         'list-suites',
         'list-test-files',
+        'list-test-ids',
         'list-tests',
         'list-tests-xml=',
         'log-junit=',
@@ -158,6 +159,8 @@ final class Builder
         'testsuite=',
         'exclude-testsuite=',
         'test-files-file=',
+        'test-id-filter-file=',
+        'run-test-id=',
         'log-events-text=',
         'log-events-verbose-text=',
         'version',
@@ -289,6 +292,7 @@ final class Builder
         $listGroups                        = false;
         $listSuites                        = false;
         $listTestFiles                     = false;
+        $listTestIds                       = false;
         $listTests                         = false;
         $listTestsXml                      = null;
         $noCoverage                        = null;
@@ -311,6 +315,8 @@ final class Builder
         $testSuite                         = null;
         $excludeTestSuite                  = null;
         $testFilesFile                     = null;
+        $testIdFile                        = null;
+        $testIdFilter                      = null;
         $useDefaultConfiguration           = true;
         $version                           = false;
         $logEventsText                     = null;
@@ -494,6 +500,16 @@ final class Builder
 
                     break;
 
+                case '--test-id-filter-file':
+                    $testIdFile = $option[1];
+
+                    break;
+
+                case '--run-test-id':
+                    $testIdFilter = $option[1];
+
+                    break;
+
                 case '--generate-baseline':
                     $generateBaseline = $option[1];
 
@@ -610,6 +626,11 @@ final class Builder
 
                 case '--list-test-files':
                     $listTestFiles = true;
+
+                    break;
+
+                case '--list-test-ids':
+                    $listTestIds = true;
 
                     break;
 
@@ -1259,9 +1280,17 @@ final class Builder
             $extensions = null;
         }
 
+        if ($randomOrderSeed !== null && $executionOrder !== TestSuiteSorter::ORDER_RANDOMIZED) {
+            EventFacade::emitter()->testRunnerTriggeredPhpunitWarning(
+                '--random-order-seed is only used when execution order is "random" (use --order-by random or --random-order)',
+            );
+        }
+
         return new Configuration(
             $options[1],
             $testFilesFile,
+            $testIdFile,
+            $testIdFilter,
             $all,
             $atLeastVersion,
             $backupGlobals,
@@ -1347,6 +1376,7 @@ final class Builder
             $listGroups,
             $listSuites,
             $listTestFiles,
+            $listTestIds,
             $listTests,
             $listTestsXml,
             $noCoverage,
