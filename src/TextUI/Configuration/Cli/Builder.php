@@ -148,6 +148,7 @@ final class Builder
         'stop-on-skipped==',
         'stop-on-warning==',
         'strict-coverage',
+        'require-coverage-contribution',
         'disable-coverage-ignore',
         'strict-global-state',
         'teamcity',
@@ -308,6 +309,7 @@ final class Builder
         $reverseList                       = null;
         $stderr                            = null;
         $strictCoverage                    = null;
+        $requireCoverageContribution       = null;
         $teamcityLogfile                   = null;
         $testdoxHtmlFile                   = null;
         $testdoxTextFile                   = null;
@@ -685,7 +687,21 @@ final class Builder
                                 break;
 
                             case 'duration':
-                                $executionOrder = TestSuiteSorter::ORDER_DURATION;
+                                $executionOrder = TestSuiteSorter::ORDER_DURATION_ASCENDING;
+
+                                EventFacade::emitter()->testRunnerTriggeredPhpunitDeprecation(
+                                    'Using "duration" for --order-by is deprecated and will be removed in PHPUnit 14. Use "duration-ascending" instead.',
+                                );
+
+                                break;
+
+                            case 'duration-ascending':
+                                $executionOrder = TestSuiteSorter::ORDER_DURATION_ASCENDING;
+
+                                break;
+
+                            case 'duration-descending':
+                                $executionOrder = TestSuiteSorter::ORDER_DURATION_DESCENDING;
 
                                 break;
 
@@ -705,7 +721,21 @@ final class Builder
                                 break;
 
                             case 'size':
-                                $executionOrder = TestSuiteSorter::ORDER_SIZE;
+                                $executionOrder = TestSuiteSorter::ORDER_SIZE_ASCENDING;
+
+                                EventFacade::emitter()->testRunnerTriggeredPhpunitDeprecation(
+                                    'Using "size" for --order-by is deprecated and will be removed in PHPUnit 14. Use "size-ascending" instead.',
+                                );
+
+                                break;
+
+                            case 'size-ascending':
+                                $executionOrder = TestSuiteSorter::ORDER_SIZE_ASCENDING;
+
+                                break;
+
+                            case 'size-descending':
+                                $executionOrder = TestSuiteSorter::ORDER_SIZE_DESCENDING;
 
                                 break;
 
@@ -1095,6 +1125,11 @@ final class Builder
 
                     break;
 
+                case '--require-coverage-contribution':
+                    $requireCoverageContribution = true;
+
+                    break;
+
                 case '--disable-coverage-ignore':
                     $disableCodeCoverageIgnore = true;
 
@@ -1392,6 +1427,7 @@ final class Builder
             $reverseList,
             $stderr,
             $strictCoverage,
+            $requireCoverageContribution,
             $teamcityLogfile,
             $testdoxHtmlFile,
             $testdoxTextFile,

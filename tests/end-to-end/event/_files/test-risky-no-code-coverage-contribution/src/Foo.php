@@ -7,13 +7,12 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
-namespace PHPUnit\TestFixture\Event\ErrorHandlerIsNotOverwritten;
+namespace PHPUnit\TestFixture\Event\RiskyNoCodeCoverageContribution;
 
-use function set_error_handler;
-
-set_error_handler(
-    static function (int $errorNumber, string $errorString, string $errorFile, int $errorLine): bool
+final class Foo
+{
+    public function doSomething(): bool
     {
         return true;
-    },
-);
+    }
+}

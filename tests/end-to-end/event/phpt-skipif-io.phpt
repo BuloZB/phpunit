@@ -21,6 +21,8 @@ Test Runner Execution Started (1 test)
 Test Suite Started (%s%ephpt-skipif-io.phpt, 1 test)
 Test Preparation Started (%s%ephpt-skipif-io.phpt)
 Test Prepared (%s%ephpt-skipif-io.phpt)
+Test Considered Risky (%s%ephpt-skipif-io.phpt)
+SKIPIF section does not produce output that could result in the test being skipped
 Child Process Started
 Child Process Finished
 Test Passed (%s%ephpt-skipif-io.phpt)

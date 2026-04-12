@@ -8,9 +8,13 @@ All notable changes of the PHPUnit 13.2 release series are documented in this fi
 
 * [#3387](https://github.com/sebastianbergmann/phpunit/issues/3387): Specify a list of tests to run
 * [#4201](https://github.com/sebastianbergmann/phpunit/issues/4201): Handle interrupts and display current test results
+* [#4501](https://github.com/sebastianbergmann/phpunit/issues/4501): Option to mark test as risky when it does not contribute to code coverage
 * [#5757](https://github.com/sebastianbergmann/phpunit/issues/5757): Add assertions for ignoring whitespace differences in strings
 * [#5810](https://github.com/sebastianbergmann/phpunit/issues/5810): Do not dump arrays and objects in failure messages of `IsTrue`, `IsFalse`, `IsNull`, `IsFinite`, `IsInfinite`, and `IsNan` constraints
 * [#5838](https://github.com/sebastianbergmann/phpunit/issues/5838): Inherit `#[RunTestsInSeparateProcesses]` from parent test classes
+* [#5922](https://github.com/sebastianbergmann/phpunit/issues/5922): `assertContainsEquals()` should use `sebastian/comparator` for element comparison
+* [#6000](https://github.com/sebastianbergmann/phpunit/issues/6000): Report PHPT test as risky when `--SKIPIF--` does not have standard-output side-effect
+* [#6075](https://github.com/sebastianbergmann/phpunit/issues/6075): Support test execution order sorted by descending duration
 * [#6559](https://github.com/sebastianbergmann/phpunit/issues/6559): Improved API for exception message expectations
 * [#6566](https://github.com/sebastianbergmann/phpunit/pull/6566): Allow `--stop-on-defect`, `--stop-on-error`, etc. to accept an optional threshold
 * [#6567](https://github.com/sebastianbergmann/phpunit/issues/6567): Make diff context lines configurable
@@ -19,8 +23,21 @@ All notable changes of the PHPUnit 13.2 release series are documented in this fi
 * [#6577](https://github.com/sebastianbergmann/phpunit/issues/6577): `--run-test-id <test-id>` CLI option that accepts a single test ID for exact matching
 * [#6579](https://github.com/sebastianbergmann/phpunit/pull/6579): Properly handle issues triggered outside of tests
 
+### Changed
+
+* [#5873](https://github.com/sebastianbergmann/phpunit/issues/5873): Chain previously registered error handler instead of silently disabling PHPUnit's error handling
+
 ### Deprecated
 
+* [#6075](https://github.com/sebastianbergmann/phpunit/issues/6075): `--order-by duration` CLI option, use `--order-by duration-ascending` instead
+* [#6075](https://github.com/sebastianbergmann/phpunit/issues/6075): `--order-by size` CLI option, use `--order-by size-ascending` instead
+* [#6075](https://github.com/sebastianbergmann/phpunit/issues/6075): `executionOrder="duration"` XML configuration attribute value, use `executionOrder="duration-ascending"` instead
+* [#6075](https://github.com/sebastianbergmann/phpunit/issues/6075): `executionOrder="size"` XML configuration attribute value, use `executionOrder="size-ascending"` instead
 * [#6560](https://github.com/sebastianbergmann/phpunit/issues/6560): Soft-deprecate `expectExceptionMessage()`, use `expectExceptionMessageIsOrContains()` instead
+
+### Fixed
+
+* [#5845](https://github.com/sebastianbergmann/phpunit/issues/5845): Error handlers registered before PHPUnit (e.g. via `auto_prepend_file`) cause false "risky test" warnings
+* [#6582](https://github.com/sebastianbergmann/phpunit/issues/6582): `TestSuiteSorter::cmpSize()` does not handle `TestSuite` objects for `TestCase` classes
 
 [13.2.0]: https://github.com/sebastianbergmann/phpunit/compare/13.1...main

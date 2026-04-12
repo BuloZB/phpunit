@@ -31,6 +31,7 @@ use DOMElement;
 use DOMNode;
 use DOMNodeList;
 use DOMXPath;
+use PHPUnit\Event\Facade as EventFacade;
 use PHPUnit\Runner\TestSuiteSorter;
 use PHPUnit\Runner\Version;
 use PHPUnit\TextUI\Configuration\Configuration;
@@ -898,7 +899,21 @@ final readonly class Loader
                         break;
 
                     case 'duration':
-                        $executionOrder = TestSuiteSorter::ORDER_DURATION;
+                        $executionOrder = TestSuiteSorter::ORDER_DURATION_ASCENDING;
+
+                        EventFacade::emitter()->testRunnerTriggeredPhpunitDeprecation(
+                            'Using "duration" for the executionOrder attribute is deprecated and will be removed in PHPUnit 14. Use "duration-ascending" instead.',
+                        );
+
+                        break;
+
+                    case 'duration-ascending':
+                        $executionOrder = TestSuiteSorter::ORDER_DURATION_ASCENDING;
+
+                        break;
+
+                    case 'duration-descending':
+                        $executionOrder = TestSuiteSorter::ORDER_DURATION_DESCENDING;
 
                         break;
 
@@ -913,7 +928,21 @@ final readonly class Loader
                         break;
 
                     case 'size':
-                        $executionOrder = TestSuiteSorter::ORDER_SIZE;
+                        $executionOrder = TestSuiteSorter::ORDER_SIZE_ASCENDING;
+
+                        EventFacade::emitter()->testRunnerTriggeredPhpunitDeprecation(
+                            'Using "size" for the executionOrder attribute is deprecated and will be removed in PHPUnit 14. Use "size-ascending" instead.',
+                        );
+
+                        break;
+
+                    case 'size-ascending':
+                        $executionOrder = TestSuiteSorter::ORDER_SIZE_ASCENDING;
+
+                        break;
+
+                    case 'size-descending':
+                        $executionOrder = TestSuiteSorter::ORDER_SIZE_DESCENDING;
 
                         break;
                 }
@@ -960,6 +989,12 @@ final readonly class Loader
 
         if ($document->documentElement->hasAttribute('beStrictAboutCoverageMetadata')) {
             $beStrictAboutCoverageMetadata = $this->parseBooleanAttribute($document->documentElement, 'beStrictAboutCoverageMetadata', false);
+        }
+
+        $requireCoverageContribution = false;
+
+        if ($document->documentElement->hasAttribute('requireCoverageContribution')) {
+            $requireCoverageContribution = $this->parseBooleanAttribute($document->documentElement, 'requireCoverageContribution', false);
         }
 
         $shortenArraysForExportThreshold = $this->parseIntegerAttribute($document->documentElement, 'shortenArraysForExportThreshold', 10);
@@ -1014,6 +1049,7 @@ final readonly class Loader
             $this->parseBooleanAttribute($document->documentElement, 'beStrictAboutOutputDuringTests', false),
             $this->parseBooleanAttribute($document->documentElement, 'beStrictAboutTestsThatDoNotTestAnything', true),
             $beStrictAboutCoverageMetadata,
+            $requireCoverageContribution,
             $this->parseBooleanAttribute($document->documentElement, 'enforceTimeLimit', false),
             $this->parseIntegerAttribute($document->documentElement, 'defaultTimeLimit', 1),
             $this->parseIntegerAttribute($document->documentElement, 'timeoutForSmallTests', 1),

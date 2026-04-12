@@ -1,5 +1,5 @@
 --TEST--
-Test Runner exits with shell exit code indicating success by default when no tests were run
+Test Runner exits with shell exit code indicating failure when --filter is used and no tests match
 --FILE--
 <?php declare(strict_types=1);
 $_SERVER['argv'][] = '--do-not-cache-result';
@@ -23,4 +23,4 @@ Test Suite Filtered (0 tests)
 Test Runner Execution Started (0 tests)
 Test Runner Execution Finished
 Test Runner Finished
-PHPUnit Finished (Shell Exit Code: 0)
+PHPUnit Finished (Shell Exit Code: 1)

@@ -14,6 +14,7 @@ require __DIR__ . '/../../bootstrap.php';
 (new PHPUnit\TextUI\Application)->run($_SERVER['argv']);
 --EXPECTF--
 PHPUnit Started (PHPUnit %s using %s)
+Test Runner Triggered PHPUnit Deprecation (Using "size" for --order-by is deprecated and will be removed in PHPUnit 14. Use "size-ascending" instead.)
 Test Runner Configured
 Event Facade Sealed
 Test Suite Loaded (3 tests)
