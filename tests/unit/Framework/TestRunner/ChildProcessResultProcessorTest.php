@@ -29,7 +29,8 @@ final class ChildProcessResultProcessorTest extends TestCase
 
         $emitter
             ->expects($this->once())
-            ->method('testErrored');
+            ->method('testErrored')
+            ->seal();
 
         $this->processor($emitter)->process(new Success('testOne'), '', 'error');
     }
@@ -41,9 +42,96 @@ final class ChildProcessResultProcessorTest extends TestCase
 
         $emitter
             ->expects($this->once())
+            ->method('childProcessErrored');
+
+        $emitter
+            ->expects($this->once())
             ->method('testErrored');
 
+        $emitter
+            ->expects($this->once())
+            ->method('testFinished')
+            ->seal();
+
         $this->processor($emitter)->process(new Success('testOne'), '', '');
+    }
+
+    #[TestDox('Emits Test\Errored event when process result nonce is shorter than the expected nonce')]
+    public function testEmitsErrorEventWhenProcessResultIsShorterThanExpectedNonce(): void
+    {
+        $emitter = $this->createMock(Emitter::class);
+
+        $emitter
+            ->expects($this->once())
+            ->method('childProcessErrored');
+
+        $emitter
+            ->expects($this->once())
+            ->method('testErrored');
+
+        $emitter
+            ->expects($this->once())
+            ->method('testFinished')
+            ->seal();
+
+        $this->processor($emitter)->process(
+            new Success('testOne'),
+            'too-short',
+            '',
+            'abcdef0123456789abcdef0123456789',
+        );
+    }
+
+    #[TestDox('Emits Test\Errored event when process result nonce does not match the expected nonce')]
+    public function testEmitsErrorEventWhenProcessResultNonceDoesNotMatchExpectedNonce(): void
+    {
+        $emitter = $this->createMock(Emitter::class);
+
+        $emitter
+            ->expects($this->once())
+            ->method('childProcessErrored');
+
+        $emitter
+            ->expects($this->once())
+            ->method('testErrored');
+
+        $emitter
+            ->expects($this->once())
+            ->method('testFinished')
+            ->seal();
+
+        $this->processor($emitter)->process(
+            new Success('testOne'),
+            '00000000000000000000000000000000payload',
+            '',
+            'abcdef0123456789abcdef0123456789',
+        );
+    }
+
+    #[TestDox('Emits Test\Errored event when process result contains only the expected nonce and no serialized data')]
+    public function testEmitsErrorEventWhenProcessResultContainsOnlyExpectedNonceAndNoSerializedData(): void
+    {
+        $emitter = $this->createMock(Emitter::class);
+
+        $emitter
+            ->expects($this->once())
+            ->method('childProcessErrored');
+
+        $emitter
+            ->expects($this->once())
+            ->method('testErrored');
+
+        $emitter
+            ->expects($this->once())
+            ->method('testFinished')
+            ->seal();
+
+        $this->processor($emitter)->process(
+            new Success('testOne'),
+            'abcdef0123456789abcdef0123456789',
+            '',
+            'abcdef0123456789abcdef0123456789',
+        );
     }
 
     private function processor(Emitter $emitter): ChildProcessResultProcessor

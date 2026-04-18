@@ -15,17 +15,23 @@ All notable changes of the PHPUnit 13.2 release series are documented in this fi
 * [#5922](https://github.com/sebastianbergmann/phpunit/issues/5922): `assertContainsEquals()` should use `sebastian/comparator` for element comparison
 * [#6000](https://github.com/sebastianbergmann/phpunit/issues/6000): Report PHPT test as risky when `--SKIPIF--` does not have standard-output side-effect
 * [#6075](https://github.com/sebastianbergmann/phpunit/issues/6075): Support test execution order sorted by descending duration
+* [#6346](https://github.com/sebastianbergmann/phpunit/issues/6346): Emit warning when conflicting CLI options are used
+* [#6534](https://github.com/sebastianbergmann/phpunit/issues/6534): Make `$_dataName` available to `#[TestDoxFormatter]` callbacks
 * [#6559](https://github.com/sebastianbergmann/phpunit/issues/6559): Improved API for exception message expectations
+* [#6565](https://github.com/sebastianbergmann/phpunit/pull/6565): Optional `$skipWhenEmpty` parameter for `#[DataProvider]` and `#[DataProviderExternal]`
 * [#6566](https://github.com/sebastianbergmann/phpunit/pull/6566): Allow `--stop-on-defect`, `--stop-on-error`, etc. to accept an optional threshold
 * [#6567](https://github.com/sebastianbergmann/phpunit/issues/6567): Make diff context lines configurable
 * [#6574](https://github.com/sebastianbergmann/phpunit/issues/6574): Improve `willReturnMap()` with constraint support and strict matching
 * [#6575](https://github.com/sebastianbergmann/phpunit/issues/6575): `--list-test-ids` CLI option and enhance `--filter` CLI option to support test ID syntax
 * [#6577](https://github.com/sebastianbergmann/phpunit/issues/6577): `--run-test-id <test-id>` CLI option that accepts a single test ID for exact matching
 * [#6579](https://github.com/sebastianbergmann/phpunit/pull/6579): Properly handle issues triggered outside of tests
+* The `executionOrder` attribute in the XML configuration file now accepts `defects` combined with any main order, as well as three-way combinations of `depends`/`no-depends`, `defects`, and a main order (for example, `depends,defects,duration-ascending`)
+* `--validate-configuration` CLI option to validate an XML configuration file for PHPUnit
 
 ### Changed
 
 * [#5873](https://github.com/sebastianbergmann/phpunit/issues/5873): Chain previously registered error handler instead of silently disabling PHPUnit's error handling
+* Only errors and failures are now considered for "defect first" test reordering (tests that triggered deprecations, notices, or warnings as well as incomplete, risky, and skipped tests were previous also considered)
 
 ### Deprecated
 
@@ -38,6 +44,7 @@ All notable changes of the PHPUnit 13.2 release series are documented in this fi
 ### Fixed
 
 * [#5845](https://github.com/sebastianbergmann/phpunit/issues/5845): Error handlers registered before PHPUnit (e.g. via `auto_prepend_file`) cause false "risky test" warnings
+* [#5851](https://github.com/sebastianbergmann/phpunit/issues/5851): Output buffer manipulation in tests causes incorrect capture, hangs, and silent failures
 * [#6582](https://github.com/sebastianbergmann/phpunit/issues/6582): `TestSuiteSorter::cmpSize()` does not handle `TestSuite` objects for `TestCase` classes
 
 [13.2.0]: https://github.com/sebastianbergmann/phpunit/compare/13.1...main

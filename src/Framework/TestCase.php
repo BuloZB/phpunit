@@ -10,6 +10,8 @@
 namespace PHPUnit\Framework;
 
 use const PHP_EOL;
+use const PHP_OUTPUT_HANDLER_CLEAN;
+use const PHP_OUTPUT_HANDLER_FINAL;
 use function array_any;
 use function array_keys;
 use function array_merge;
@@ -38,7 +40,6 @@ use function is_writable;
 use function libxml_clear_errors;
 use function method_exists;
 use function ob_end_clean;
-use function ob_get_clean;
 use function ob_get_contents;
 use function ob_get_level;
 use function ob_start;
@@ -110,6 +111,8 @@ use Throwable;
 
 /**
  * @no-named-arguments Parameter names are not covered by the backward compatibility promise for PHPUnit
+ *
+ * @phpstan-import-type HookMethodsByType from HookMethods
  */
 abstract class TestCase extends Assert implements Reorderable, SelfDescribing, Test
 {
@@ -192,6 +195,8 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
     private ?string $outputExpectedString    = null;
     private bool $outputBufferingActive      = false;
     private int $outputBufferingLevel;
+    private string $outputBufferingCaptured   = '';
+    private bool $outputBufferingDestroyed    = false;
     private bool $outputRetrievedForAssertion = false;
     private bool $doesNotPerformAssertions    = false;
     private bool $expectErrorLog              = false;
@@ -221,8 +226,9 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
     /**
      * @var false|resource
      */
-    private mixed $errorLogCapture               = false;
-    private false|string $previousErrorLogTarget = false;
+    private mixed $errorLogCapture                = false;
+    private false|string $previousErrorLogTarget  = false;
+    private ?string $emptyDataProviderSkipMessage = null;
 
     /**
      * @param non-empty-string $name
@@ -360,7 +366,7 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
             return;
         }
 
-        IsolatedTestRunnerRegistry::run(
+        (new SeparateProcessTestRunner)->run(
             $this,
             $this->preserveGlobalState,
             $this->requiresXdebug(),
@@ -443,7 +449,7 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
             return $this->output;
         }
 
-        return (string) ob_get_contents();
+        return $this->outputBufferingCaptured . (string) ob_get_contents();
     }
 
     /**
@@ -491,6 +497,10 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
         try {
             $this->checkRequirements();
             $hasMetRequirements = true;
+
+            if ($this->emptyDataProviderSkipMessage !== null) {
+                $this->markTestSkipped($this->emptyDataProviderSkipMessage);
+            }
 
             if ($this->inIsolation) {
                 // @codeCoverageIgnoreStart
@@ -597,7 +607,10 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
             $this->stopOutputBuffering()) {
             $outputBufferingStopped = true;
 
-            $this->performAssertionsOnOutput();
+            try {
+                $this->performAssertionsOnOutput();
+            } catch (ExpectationFailedException $e) {
+            }
         }
 
         try {
@@ -781,6 +794,14 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
     final public function setInIsolation(bool $inIsolation): void
     {
         $this->inIsolation = $inIsolation;
+    }
+
+    /**
+     * @internal This method is not covered by the backward compatibility promise for PHPUnit
+     */
+    final public function setEmptyDataProviderSkipMessage(string $message): void
+    {
+        $this->emptyDataProviderSkipMessage = $message;
     }
 
     /**
@@ -1594,7 +1615,28 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
 
     private function startOutputBuffering(): void
     {
-        ob_start();
+        $this->outputBufferingCaptured  = '';
+        $this->outputBufferingDestroyed = false;
+
+        ob_start(function (string $buffer, int $phase): string
+        {
+            $isClean = ($phase & PHP_OUTPUT_HANDLER_CLEAN) !== 0;
+            $isFinal = ($phase & PHP_OUTPUT_HANDLER_FINAL) !== 0;
+
+            if ($isFinal) {
+                $this->outputBufferingDestroyed = true;
+            }
+
+            if (!$isClean || $isFinal) {
+                $this->outputBufferingCaptured .= $buffer;
+            }
+
+            if ($isFinal && !$isClean) {
+                return $buffer;
+            }
+
+            return '';
+        });
 
         $this->outputBufferingActive = true;
         $this->outputBufferingLevel  = ob_get_level();
@@ -1612,8 +1654,14 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
             }
 
             while (ob_get_level() >= $this->outputBufferingLevel) {
-                ob_end_clean();
+                if (!ob_end_clean()) {
+                    break;
+                }
             }
+
+            $this->output                = $this->outputBufferingCaptured;
+            $this->outputBufferingActive = false;
+            $this->outputBufferingLevel  = ob_get_level();
 
             Event\Facade::emitter()->testConsideredRisky(
                 $this->valueObjectForEvents(),
@@ -1623,12 +1671,22 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
             return false;
         }
 
-        $output = ob_get_clean();
+        $bufferWasSubstituted = $this->outputBufferingDestroyed;
 
-        $this->output = $output !== false ? $output : '';
+        ob_end_clean();
 
+        $this->output                = $this->outputBufferingCaptured;
         $this->outputBufferingActive = false;
         $this->outputBufferingLevel  = ob_get_level();
+
+        if ($bufferWasSubstituted) {
+            Event\Facade::emitter()->testConsideredRisky(
+                $this->valueObjectForEvents(),
+                'Test code or tested code closed output buffers other than its own',
+            );
+
+            return false;
+        }
 
         return true;
     }
@@ -2026,7 +2084,7 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
     }
 
     /**
-     * @param array{beforeClass: HookMethodCollection, before: HookMethodCollection, preCondition: HookMethodCollection, postCondition: HookMethodCollection, after: HookMethodCollection, afterClass: HookMethodCollection} $hookMethods
+     * @param HookMethodsByType $hookMethods
      *
      * @throws Throwable
      *
@@ -2045,7 +2103,7 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
     }
 
     /**
-     * @param array{beforeClass: HookMethodCollection, before: HookMethodCollection, preCondition: HookMethodCollection, postCondition: HookMethodCollection, after: HookMethodCollection, afterClass: HookMethodCollection} $hookMethods
+     * @param HookMethodsByType $hookMethods
      *
      * @throws Throwable
      */
@@ -2062,7 +2120,7 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
     }
 
     /**
-     * @param array{beforeClass: HookMethodCollection, before: HookMethodCollection, preCondition: HookMethodCollection, postCondition: HookMethodCollection, after: HookMethodCollection, afterClass: HookMethodCollection} $hookMethods
+     * @param HookMethodsByType $hookMethods
      *
      * @throws Throwable
      */
@@ -2079,7 +2137,7 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
     }
 
     /**
-     * @param array{beforeClass: HookMethodCollection, before: HookMethodCollection, preCondition: HookMethodCollection, postCondition: HookMethodCollection, after: HookMethodCollection, afterClass: HookMethodCollection} $hookMethods
+     * @param HookMethodsByType $hookMethods
      *
      * @throws Throwable
      */
@@ -2096,7 +2154,7 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
     }
 
     /**
-     * @param array{beforeClass: HookMethodCollection, before: HookMethodCollection, preCondition: HookMethodCollection, postCondition: HookMethodCollection, after: HookMethodCollection, afterClass: HookMethodCollection} $hookMethods
+     * @param HookMethodsByType $hookMethods
      *
      * @throws Throwable
      */
@@ -2113,7 +2171,7 @@ abstract class TestCase extends Assert implements Reorderable, SelfDescribing, T
     }
 
     /**
-     * @param array{beforeClass: HookMethodCollection, before: HookMethodCollection, preCondition: HookMethodCollection, postCondition: HookMethodCollection, after: HookMethodCollection, afterClass: HookMethodCollection} $hookMethods
+     * @param HookMethodsByType $hookMethods
      *
      * @throws Throwable
      *
