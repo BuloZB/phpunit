@@ -17,6 +17,7 @@ use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Small;
 
 #[CoversClass(SourceFilter::class)]
+#[CoversClass(FileFilterMapper::class)]
 #[Small]
 #[Group('textui')]
 #[Group('textui/configuration')]
@@ -427,6 +428,30 @@ final class SourceFilterTest extends AbstractSourceFilterTestCase
                     ),
                 ),
             ],
+            'file in hidden directory is included when listed explicitly' => [
+                [
+                    self::fixturePath('a/c/.hidden/PrefixSuffix.php') => true,
+                ],
+                self::createSource(
+                    includeFiles: FilterFileCollection::fromArray(
+                        [
+                            new FilterFile(self::fixturePath('a/c/.hidden/PrefixSuffix.php')),
+                        ],
+                    ),
+                ),
+            ],
+            'file in hidden directory is included when the hidden segment is part of the include root' => [
+                [
+                    self::fixturePath('a/c/.hidden/PrefixSuffix.php') => true,
+                ],
+                self::createSource(
+                    includeDirectories: FilterDirectoryCollection::fromArray(
+                        [
+                            new FilterDirectory(self::fixturePath('a/c/.hidden'), '', '.php'),
+                        ],
+                    ),
+                ),
+            ],
             'files included using directory and prefix' => [
                 [
                     self::fixturePath('b/e/PrefixExampleSuffix.php') => true,
@@ -513,6 +538,62 @@ final class SourceFilterTest extends AbstractSourceFilterTestCase
                     ),
                 ),
             ],
+            'file included using directory with non-canonical path' => [
+                [
+                    self::fixturePath('a/PrefixSuffix.php') => true,
+                ],
+                self::createSource(
+                    includeDirectories: FilterDirectoryCollection::fromArray(
+                        [
+                            new FilterDirectory(self::fixturePath('/b/../a'), '', '.php'),
+                        ],
+                    ),
+                ),
+            ],
+            'file included using file with non-canonical path' => [
+                [
+                    self::fixturePath('a/PrefixSuffix.php') => true,
+                ],
+                self::createSource(includeFiles: FilterFileCollection::fromArray(
+                    [
+                        new FilterFile(self::fixturePath('/b/../a/PrefixSuffix.php')),
+                    ],
+                )),
+            ],
+            'file excluded using directory with non-canonical path' => [
+                [
+                    self::fixturePath('a/PrefixSuffix.php') => false,
+                ],
+                self::createSource(
+                    includeDirectories: FilterDirectoryCollection::fromArray(
+                        [
+                            new FilterDirectory(self::fixturePath(), '', '.php'),
+                        ],
+                    ),
+                    excludeDirectories: FilterDirectoryCollection::fromArray(
+                        [
+                            new FilterDirectory(self::fixturePath('/b/../a'), '', '.php'),
+                        ],
+                    ),
+                ),
+            ],
+            'file excluded using file with non-canonical path' => [
+                [
+                    self::fixturePath('a/PrefixSuffix.php') => false,
+                ],
+                self::createSource(
+                    includeDirectories: FilterDirectoryCollection::fromArray(
+                        [
+                            new FilterDirectory(self::fixturePath(), '', '.php'),
+                        ],
+                    ),
+                    excludeFiles: FilterFileCollection::fromArray(
+                        [
+                            new FilterFile(self::fixturePath('/b/../a/PrefixSuffix.php')),
+                        ],
+                    ),
+                ),
+            ],
             'files included using same directory and different prefixes' => [
                 [
                     self::fixturePath('a/c/Suffix.php')              => true,
@@ -561,7 +642,7 @@ final class SourceFilterTest extends AbstractSourceFilterTestCase
             $this->assertFileExists($file);
             $this->assertSame(
                 $shouldInclude,
-                new SourceFilter((new SourceMapper)->map($source))->includes($file),
+                new SourceFilter((new FileFilterMapper)->map($source))->includes($file),
                 sprintf('expected match to return %s for: %s', json_encode($shouldInclude), $file),
             );
         }

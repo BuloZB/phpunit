@@ -18,4 +18,10 @@ final class IgnoreDeprecationsMethodTest extends TestCase
     public function testOne(): void
     {
     }
+
+    #[IgnoreDeprecations('foo')]
+    #[IgnoreDeprecations('bar')]
+    public function testTwo(): void
+    {
+    }
 }
