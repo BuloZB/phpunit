@@ -84,6 +84,12 @@ final readonly class Renderer
             $codeCoverageCacheDirectory = "'" . $codeCoverageCacheDirectory . "'";
         }
 
+        if ($pathCoverage) {
+            $pathCoverageValue = 'true';
+        } else {
+            $pathCoverageValue = 'false';
+        }
+
         $template->setVar(
             [
                 'bootstrap'                  => $bootstrap,
@@ -91,7 +97,7 @@ final readonly class Renderer
                 'phar'                       => $phar,
                 'job'                        => $files['job'],
                 'coverageFile'               => $files['coverage'],
-                'driverMethod'               => $pathCoverage ? 'forLineAndPathCoverage' : 'forLineCoverage',
+                'pathCoverage'               => $pathCoverageValue,
                 'codeCoverageCacheDirectory' => $codeCoverageCacheDirectory,
             ],
         );
