@@ -329,7 +329,7 @@ EOT,
     {
         $double = $this->createMock(InterfaceWithReturnTypeDeclaration::class);
 
-        $double->expects($this->exactly(2))->method('doSomethingElse')->withParameterSetsInOrder(1, 2);
+        $double->expects($this->exactly(2))->method('doSomethingElse')->withParameterSetsInOrder([1], [2]);
 
         $double->doSomethingElse(1);
         $this->assertThatMockObjectExpectationFails(
@@ -380,7 +380,7 @@ EOT,
     {
         $double = $this->createMock(InterfaceWithReturnTypeDeclaration::class);
 
-        $double->expects($this->exactly(2))->method('doSomethingElse')->withParameterSetsInAnyOrder(1, 2);
+        $double->expects($this->exactly(2))->method('doSomethingElse')->withParameterSetsInAnyOrder([1], [2]);
 
         $double->doSomethingElse(2);
         $double->doSomethingElse(1);
@@ -397,7 +397,7 @@ EOT,
         $this->assertThatMockObjectExpectationFails(
             <<<'EOT'
 Expectation for PHPUnit\TestFixture\MockObject\InterfaceWithReturnTypeDeclaration::doSomethingElse() failed.
-1 out of 2 expected parameter sets was called, index [1] was not called.
+1 out of 2 expected unordered parameter sets was called, index [1] was not called.
 
 EOT,
             $double,
@@ -415,7 +415,7 @@ EOT,
         $this->assertThatMockObjectExpectationFails(
             <<<'EOT'
 Expectation for PHPUnit\TestFixture\MockObject\InterfaceWithReturnTypeDeclaration::doSomethingElse() failed.
-2 out of 3 expected parameter sets were called, index [0] was not called.
+2 out of 3 expected unordered parameter sets were called, index [0] was not called.
 
 EOT,
             $double,
@@ -427,6 +427,153 @@ EOT,
         $double = $this->createMock(InterfaceWithReturnTypeDeclaration::class);
 
         $double->expects($this->exactly(3))->method('doSomethingElse')->withParameterSetsInAnyOrder(1, 2);
+
+        $this->expectException(NoMoreParameterSetsConfiguredException::class);
+        $this->expectExceptionMessageIs('Not enough parameter sets configured, only 2 parameter sets given for PHPUnit\TestFixture\MockObject\InterfaceWithReturnTypeDeclaration::doSomethingElse()');
+
+        $double->doSomethingElse(1);
+        $double->doSomethingElse(2);
+        $double->doSomethingElse(3);
+    }
+
+    public function testExpectationThatMethodIsCalledWithPartialOrderedParameterSetsSucceedsWhenMethodIsCalledWithExpectedParameters(): void
+    {
+        $double = $this->createMock(InterfaceWithReturnTypeDeclaration::class);
+
+        $double->expects($this->exactly(3))->method('doSomethingElse')
+            ->withParameterSetsInPartialOrder(
+                1,
+                2,
+                ['pinned' => 3],
+            );
+
+        $double->doSomethingElse(2);
+        $double->doSomethingElse(1);
+        $double->doSomethingElse(3);
+    }
+
+    public function testExpectationThatMethodIsCalledWithParameterSetsInPartialOrderFailsWhenMethodIsCalledWithOneWrongParameter(): void
+    {
+        $double = $this->createMock(InterfaceWithReturnTypeDeclaration::class);
+
+        $double->expects($this->exactly(2))->method('doSomethingElse')->withParameterSetsInPartialOrder(1, 2);
+
+        $double->doSomethingElse(3);
+        $double->doSomethingElse(1);
+        $this->assertThatMockObjectExpectationFails(
+            <<<'EOT'
+Expectation for PHPUnit\TestFixture\MockObject\InterfaceWithReturnTypeDeclaration::doSomethingElse() failed.
+1 out of 2 expected unordered parameter sets was called, index [1] was not called.
+
+EOT,
+            $double,
+        );
+    }
+
+    public function testExpectationThatMethodIsCalledWithParameterSetsInPartialOrderFailsWhenMethodIsCalledFixedParameterAtWrongPosition(): void
+    {
+        $double = $this->createMock(InterfaceWithReturnTypeDeclaration::class);
+
+        $double->expects($this->exactly(2))->method('doSomethingElse')
+            ->withParameterSetsInPartialOrder(
+                ['pinned' => 1],
+                2,
+            );
+
+        $this->assertThatMockObjectExpectationFails(
+            <<<'EOT'
+Expectation for PHPUnit\TestFixture\MockObject\InterfaceWithReturnTypeDeclaration::doSomethingElse() failed.
+Parameter $x for invocation PHPUnit\TestFixture\MockObject\InterfaceWithReturnTypeDeclaration::doSomethingElse(2): int does not match expected value.
+Failed asserting that 2 matches expected 1.
+EOT,
+            $double,
+            'doSomethingElse',
+            [2],
+        );
+    }
+
+    public function testExpectationThatMethodIsCalledWithParameterSetsInPartialOrderFailsWhenMethodIsCalledWithNotEnoughParameters(): void
+    {
+        $double = $this->createMock(InterfaceWithReturnTypeDeclaration::class);
+
+        $double->expects($this->exactly(3))->method('doSomethingElse')
+            ->withParameterSetsInPartialOrder(1, ['pinned' => 2]);
+
+        $this->expectException(NoMoreParameterSetsConfiguredException::class);
+        $this->expectExceptionMessageIs('Not enough parameter sets configured, only 2 parameter sets given for PHPUnit\TestFixture\MockObject\InterfaceWithReturnTypeDeclaration::doSomethingElse()');
+
+        $double->doSomethingElse(1);
+        $double->doSomethingElse(2);
+        $double->doSomethingElse(3);
+    }
+
+    public function testExpectationThatMethodIsCalledWithParameterSetsInPartialOrderFailsWhenTooManyParameterSetsAreGiven(): void
+    {
+        $double = $this->createMock(InterfaceWithReturnTypeDeclaration::class);
+
+        $double->expects($this->exactly(2))->method('doSomethingElse')
+            ->withParameterSetsInPartialOrder(['pinned' => 1], 2, 3);
+
+        $double->doSomethingElse(1);
+        $double->doSomethingElse(3);
+        $this->assertThatMockObjectExpectationFails(
+            <<<'EOT'
+Expectation for PHPUnit\TestFixture\MockObject\InterfaceWithReturnTypeDeclaration::doSomethingElse() failed.
+1 out of 2 expected unordered parameter sets was called, index [1] was not called.
+
+EOT,
+            $double,
+        );
+    }
+
+    public function testExpectationThatMethodIsCalledWithParameterSetsInPartialOrderFailsWhenTooManyParameterSetsAreGivenWithoutPinnedParameterSets(): void
+    {
+        $double = $this->createMock(InterfaceWithReturnTypeDeclaration::class);
+
+        $double->expects($this->exactly(2))->method('doSomethingElse')
+            ->withParameterSetsInPartialOrder(1, 2, 3);
+
+        $double->doSomethingElse(1);
+        $double->doSomethingElse(3);
+        $this->assertThatMockObjectExpectationFails(
+            <<<'EOT'
+Expectation for PHPUnit\TestFixture\MockObject\InterfaceWithReturnTypeDeclaration::doSomethingElse() failed.
+2 out of 3 expected unordered parameter sets were called, index [1] was not called.
+
+EOT,
+            $double,
+        );
+    }
+
+    public function testExpectationThatMethodIsCalledWithParameterSetsInPartialOrderFailsWhenTooManyParameterSetsAreGivenWithPinnedParameterSetsOnly(): void
+    {
+        $double = $this->createMock(InterfaceWithReturnTypeDeclaration::class);
+
+        $double->expects($this->exactly(2))->method('doSomethingElse')
+            ->withParameterSetsInPartialOrder(
+                ['pinned' => 1],
+                ['pinned' => 2],
+                ['pinned' => 3],
+            );
+
+        $double->doSomethingElse(1);
+        $double->doSomethingElse(2);
+        $this->assertThatMockObjectExpectationFails(
+            <<<'EOT'
+Expectation for PHPUnit\TestFixture\MockObject\InterfaceWithReturnTypeDeclaration::doSomethingElse() failed.
+Too many parameter sets given, 2 out of 3 expected parameter sets have been called.
+
+EOT,
+            $double,
+        );
+    }
+
+    public function testExpectationThatMethodIsCalledWithParameterSetsInPartialOrderFailsWhenMethodIsCalledWithNotEnoughParametersWithoutPinnedParameters(): void
+    {
+        $double = $this->createMock(InterfaceWithReturnTypeDeclaration::class);
+
+        $double->expects($this->exactly(3))->method('doSomethingElse')
+            ->withParameterSetsInPartialOrder(1, 2);
 
         $this->expectException(NoMoreParameterSetsConfiguredException::class);
         $this->expectExceptionMessageIs('Not enough parameter sets configured, only 2 parameter sets given for PHPUnit\TestFixture\MockObject\InterfaceWithReturnTypeDeclaration::doSomethingElse()');
