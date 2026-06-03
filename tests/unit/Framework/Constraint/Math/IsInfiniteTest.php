@@ -9,6 +9,7 @@
  */
 namespace PHPUnit\Framework\Constraint;
 
+use const INF;
 use function acos;
 use function log;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -38,6 +39,18 @@ final class IsInfiniteTest extends TestCase
         $this->assertSame('is infinite', (new IsInfinite)->toString());
     }
 
+    public function testCanBeNegated(): void
+    {
+        $constraint = new LogicalNot(new IsInfinite);
+
+        $this->assertSame('is not infinite', $constraint->toString());
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that INF is not infinite.');
+
+        $constraint->evaluate(INF);
+    }
+
     public function testIsCountable(): void
     {
         $this->assertCount(1, (new IsInfinite));
@@ -49,5 +62,21 @@ final class IsInfiniteTest extends TestCase
         $this->expectExceptionMessageIs('Failed asserting that 1 is infinite.');
 
         (new IsInfinite)->evaluate(1);
+    }
+
+    public function testMatchesReturnsFalseForNonNumeric(): void
+    {
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs("Failed asserting that 'foo' is infinite.");
+
+        (new IsInfinite)->evaluate('foo');
+    }
+
+    public function testReturnsAffirmativeStringInNonLogicalNotContext(): void
+    {
+        $this->assertSame(
+            'is infinite',
+            LogicalAnd::fromConstraints(new IsInfinite)->toString(),
+        );
     }
 }

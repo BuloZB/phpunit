@@ -197,9 +197,29 @@ EOT,
         $this->assertStringMatchesFormat($constraintAsString, $constraint->toString(true));
     }
 
+    public function testCanBeNegated(): void
+    {
+        $constraint = new LogicalNot(new IsEqualWithDelta(1.0, 0.1));
+
+        $this->assertSame('is not equal to 1.0 with delta <0.100000>', $constraint->toString());
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that 1.05 is not equal to 1.0 with delta <0.100000>.');
+
+        $constraint->evaluate(1.05);
+    }
+
     public function testIsCountable(): void
     {
         $this->assertCount(1, (new IsEqualWithDelta(1.0, 0.0)));
+    }
+
+    public function testReturnsAffirmativeStringInNonLogicalNotContext(): void
+    {
+        $this->assertSame(
+            'is equal to 1.0 with delta <0.100000>',
+            LogicalAnd::fromConstraints(new IsEqualWithDelta(1.0, 0.1))->toString(),
+        );
     }
 
     private static function stdClass(string $key, float $value): stdClass

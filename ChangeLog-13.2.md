@@ -13,7 +13,7 @@ All notable changes of the PHPUnit 13.2 release series are documented in this fi
 * [#5810](https://github.com/sebastianbergmann/phpunit/issues/5810): Do not dump arrays and objects in failure messages of `IsTrue`, `IsFalse`, `IsNull`, `IsFinite`, `IsInfinite`, and `IsNan` constraints
 * [#5838](https://github.com/sebastianbergmann/phpunit/issues/5838): Inherit `#[RunTestsInSeparateProcesses]` from parent test classes
 * [#5922](https://github.com/sebastianbergmann/phpunit/issues/5922): `assertContainsEquals()` should use `sebastian/comparator` for element comparison
-* [#6000](https://github.com/sebastianbergmann/phpunit/issues/6000): Report PHPT test as risky when `--SKIPIF--` does not have standard-output side-effect
+* [#6000](https://github.com/sebastianbergmann/phpunit/issues/6000): Report PHPT test as risky when `--SKIPIF--` does not have standard-output side effect
 * [#6075](https://github.com/sebastianbergmann/phpunit/issues/6075): Support test execution order sorted by descending duration
 * [#6346](https://github.com/sebastianbergmann/phpunit/issues/6346): Emit warning when conflicting CLI options are used
 * [#6534](https://github.com/sebastianbergmann/phpunit/issues/6534): Make `$_dataName` available to `#[TestDoxFormatter]` callbacks
@@ -30,12 +30,14 @@ All notable changes of the PHPUnit 13.2 release series are documented in this fi
 * [#6602](https://github.com/sebastianbergmann/phpunit/pull/6602): Separate configuration for branch coverage from path coverage
 * [#6606](https://github.com/sebastianbergmann/phpunit/pull/6606): Support for partially ordered parameter sets in mock object expectations
 * [#6611](https://github.com/sebastianbergmann/phpunit/pull/6611): Add CPU time to telemetry
+* [#6681](https://github.com/sebastianbergmann/phpunit/pull/6681): Comment-aware variants of XML comparison assertions
 * The `executionOrder` attribute in the XML configuration file now accepts `defects` combined with any main order, as well as three-way combinations of `depends`/`no-depends`, `defects`, and a main order (for example, `depends,defects,duration-ascending`)
 * `--validate-configuration` CLI option to validate an XML configuration file for PHPUnit
+* Report TestDox information in Open Test Reporting XML
 * Report per-test and per-test-suite resource usage (time, memory usage, peak memory usage) in Open Test Reporting XML
 * Report number of assertions performed for each test in Open Test Reporting XML
 * Report structured comparison failure details (expected, actual, diff) in Open Test Reporting XML
-* Report random order seed in Open Test Reporting XML when test execution order is randomized
+* Report random order seed in Open Test Reporting XML when test execution order is randomised
 
 ### Changed
 
@@ -43,6 +45,7 @@ All notable changes of the PHPUnit 13.2 release series are documented in this fi
 * [#6535](https://github.com/sebastianbergmann/phpunit/pull/6535): Use `sebastian/file-filter` in `SourceFilter::includes()` for issue trigger identification
 * [#6581](https://github.com/sebastianbergmann/phpunit/issues/6581): Allow `#[IgnoreDeprecations]` to be repeated
 * [#6609](https://github.com/sebastianbergmann/phpunit/pull/6609): Skip data providers whose method cannot match `--filter`
+* [#6685](https://github.com/sebastianbergmann/phpunit/pull/6685): Generate failure messages for inverse assertions by authoring negations, not by rewriting strings
 * Only errors and failures are now considered for "defect first" test reordering (tests that triggered deprecations, notices, or warnings as well as incomplete, risky, and skipped tests were previous also considered)
 * A warning is now emitted when closures are compared for equality using the `IsEqual`, `IsEqualCanonicalizing`, `IsEqualIgnoringCase`, `IsEqualWithDelta`, and `TraversableContainsEqual` constraints or the `assertEquals()`, `assertEqualsCanonicalizing()`, `assertEqualsIgnoringCase()`, `assertEqualsWithDelta()`, and `assertContainsEquals()` assertions
 

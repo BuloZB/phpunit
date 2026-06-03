@@ -69,6 +69,18 @@ final class RegularExpressionTest extends TestCase
         $this->assertSame('matches PCRE pattern "/.*/"', new RegularExpression('/.*/')->toString());
     }
 
+    public function testCanBeNegated(): void
+    {
+        $constraint = new LogicalNot(new RegularExpression('/foo/'));
+
+        $this->assertSame('does not match PCRE pattern "/foo/"', $constraint->toString());
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that \'foo\' does not match PCRE pattern "/foo/".');
+
+        $constraint->evaluate('foo');
+    }
+
     public function testIsCountable(): void
     {
         $this->assertCount(1, (new RegularExpression('/.*/')));
@@ -82,5 +94,18 @@ final class RegularExpressionTest extends TestCase
         $this->expectExceptionMessageIs('Regular expression cannot be matched: Backtrack limit exhausted');
 
         $constraint->evaluate(str_repeat('foobar', 1024));
+    }
+
+    public function testMatchesReturnsFalseForNonString(): void
+    {
+        $this->assertFalse(new RegularExpression('/.*/')->evaluate(123, returnResult: true));
+    }
+
+    public function testReturnsAffirmativeStringInNonLogicalNotContext(): void
+    {
+        $this->assertSame(
+            'matches PCRE pattern "/.*/"',
+            LogicalAnd::fromConstraints(new RegularExpression('/.*/'))->toString(),
+        );
     }
 }

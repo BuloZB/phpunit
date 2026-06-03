@@ -34,6 +34,18 @@ final class IsFalseTest extends TestCase
         $this->assertSame('is false', (new IsFalse)->toString());
     }
 
+    public function testCanBeNegated(): void
+    {
+        $constraint = new LogicalNot(new IsFalse);
+
+        $this->assertSame('is not false', $constraint->toString());
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that false is not false.');
+
+        $constraint->evaluate(false);
+    }
+
     public function testIsCountable(): void
     {
         $this->assertCount(1, (new IsFalse));
@@ -61,5 +73,13 @@ final class IsFalseTest extends TestCase
         $this->expectExceptionMessageIs('Failed asserting that an instance of class stdClass is false.');
 
         (new IsFalse)->evaluate(new stdClass);
+    }
+
+    public function testReturnsAffirmativeStringInNonLogicalNotContext(): void
+    {
+        $this->assertSame(
+            'is false',
+            LogicalAnd::fromConstraints(new IsFalse)->toString(),
+        );
     }
 }

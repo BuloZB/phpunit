@@ -10,10 +10,16 @@
 namespace PHPUnit\Framework;
 
 use function sprintf;
+use PHPUnit\Event;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\ExcludeGlobalVariableFromBackup;
+use PHPUnit\Framework\TestCase\GlobalStateCapture;
+use PHPUnit\TestFixture\ExpectsOutput;
 use PHPUnit\TestFixture\TestWithDifferentNames;
+use ReflectionMethod;
+use ReflectionProperty;
+use stdClass;
 
 #[CoversClass(TestCase::class)]
 #[ExcludeGlobalVariableFromBackup('i')]
@@ -126,5 +132,69 @@ class TestCaseTest extends TestCase
             TestWithDifferentNames::class . '::testWithName with data set "myDataSet"',
             $testCase->sortId(),
         );
+    }
+
+    public function testShouldRunInSeparateProcessReturnsFalseWhenTestIsAlreadyInIsolation(): void
+    {
+        $testCase = new TestWithDifferentNames('testWithName');
+        $testCase->setInIsolation(true);
+
+        $method = new ReflectionMethod(TestCase::class, 'shouldRunInSeparateProcess');
+
+        $this->assertFalse($method->invoke($testCase));
+    }
+
+    public function testShouldInvocationMockerBeResetReturnsFalseWhenMockIsAmongDependencyInput(): void
+    {
+        $testCase = new TestWithDifferentNames('testWithName');
+        $mock     = $this->createMock(stdClass::class);
+
+        $testCase->setDependencyInput(['previousTest' => $mock]);
+
+        $method = new ReflectionMethod(TestCase::class, 'shouldInvocationMockerBeReset');
+
+        $this->assertFalse($method->invoke($testCase, $mock));
+    }
+
+    public function testShouldInvocationMockerBeResetReturnsFalseWhenMockIsAmongTestResult(): void
+    {
+        $testCase = new TestWithDifferentNames('testWithName');
+        $mock     = $this->createMock(stdClass::class);
+
+        $testCase->setResult([$mock]);
+
+        $method = new ReflectionMethod(TestCase::class, 'shouldInvocationMockerBeReset');
+
+        $this->assertFalse($method->invoke($testCase, $mock));
+    }
+
+    public function testCreateGlobalStateSnapshotAppliesBackupStaticPropertiesExcludeList(): void
+    {
+        $testCase = new TestWithDifferentNames('testWithName');
+
+        $testCase->setBackupStaticPropertiesExcludeList([
+            self::class => ['testStatic'],
+        ]);
+
+        $capture = new ReflectionProperty(TestCase::class, 'globalStateCapture')->getValue($testCase);
+
+        $this->assertInstanceOf(GlobalStateCapture::class, $capture);
+        $this->assertNotNull($capture->createSnapshot($testCase, Event\Facade::emitter(), true));
+    }
+
+    public function testExpectsOutputDelegatesToTheOutputBuffer(): void
+    {
+        $testCase = new TestWithDifferentNames('testWithName');
+
+        $this->assertFalse($testCase->expectsOutput());
+    }
+
+    public function testExpectsOutputReturnsTrueWhenAnOutputExpectationIsSet(): void
+    {
+        $testCase = new ExpectsOutput('testOne');
+
+        $testCase->configureExpectation();
+
+        $this->assertTrue($testCase->expectsOutput());
     }
 }

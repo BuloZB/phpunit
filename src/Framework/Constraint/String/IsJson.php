@@ -18,6 +18,7 @@ use const JSON_ERROR_UTF8;
 use function is_string;
 use function json_decode;
 use function json_last_error;
+use function json_validate;
 use function sprintf;
 
 /**
@@ -34,6 +35,20 @@ final class IsJson extends Constraint
     }
 
     /**
+     * Returns the negated description when this constraint is wrapped in a
+     * LogicalNot operator. The guard ensures that LogicalAnd, LogicalOr, and
+     * LogicalXor keep using the affirmative toString().
+     */
+    protected function toStringInContext(Operator $operator, mixed $role): string
+    {
+        if (!$operator instanceof LogicalNot) {
+            return '';
+        }
+
+        return 'is not valid JSON';
+    }
+
+    /**
      * Evaluates the constraint for parameter $other. Returns true if the
      * constraint is met, false otherwise.
      */
@@ -43,9 +58,7 @@ final class IsJson extends Constraint
             return false;
         }
 
-        json_decode($other);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        if (!json_validate($other)) {
             return false;
         }
 
@@ -72,6 +85,35 @@ final class IsJson extends Constraint
             'a string is valid JSON (%s)',
             $this->determineJsonError($other),
         );
+    }
+
+    /**
+     * When this constraint is wrapped in a LogicalNot operator, the failure
+     * only occurs for a value that *is* valid JSON, so the parse-error detail
+     * that the affirmative description carries is not applicable here.
+     */
+    protected function failureDescriptionInContext(Operator $operator, mixed $role, mixed $other): string
+    {
+        // @codeCoverageIgnoreStart
+        if (!$operator instanceof LogicalNot) {
+            return '';
+        }
+        // @codeCoverageIgnoreEnd
+
+        // LogicalNot(IsJson) only fails when IsJson succeeds, which requires
+        // $other to be a non-empty string. The defensive branches below are
+        // therefore unreachable through the regular API.
+        // @codeCoverageIgnoreStart
+        if (!is_string($other)) {
+            return $this->valueToTypeStringFragment($other) . 'is not valid JSON';
+        }
+
+        if ($other === '') {
+            return 'an empty string is not valid JSON';
+        }
+        // @codeCoverageIgnoreEnd
+
+        return 'a string is not valid JSON';
     }
 
     private function determineJsonError(string $json): string

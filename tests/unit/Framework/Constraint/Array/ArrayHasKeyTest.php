@@ -104,8 +104,35 @@ final class ArrayHasKeyTest extends TestCase
         $this->assertSame('has the key \'key\'', new ArrayHasKey('key')->toString());
     }
 
+    public function testCanBeNegated(): void
+    {
+        $constraint = new LogicalNot(new ArrayHasKey('key'));
+
+        $this->assertSame('does not have the key \'key\'', $constraint->toString());
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that an array does not have the key \'key\'.');
+
+        $constraint->evaluate(['key' => 'value']);
+    }
+
     public function testIsCountable(): void
     {
         $this->assertCount(1, (new ArrayHasKey(0)));
+    }
+
+    public function testMatchesReturnsFalseWhenKeyIsNeitherIntegerNorString(): void
+    {
+        $constraint = new ArrayHasKey(1.5);
+
+        $this->assertFalse($constraint->evaluate(['key' => 'value'], returnResult: true));
+    }
+
+    public function testReturnsAffirmativeStringInNonLogicalNotContext(): void
+    {
+        $this->assertSame(
+            'has the key \'key\'',
+            LogicalAnd::fromConstraints(new ArrayHasKey('key'))->toString(),
+        );
     }
 }

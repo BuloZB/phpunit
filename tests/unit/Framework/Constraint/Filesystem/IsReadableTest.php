@@ -65,8 +65,36 @@ final class IsReadableTest extends TestCase
         $this->assertSame('is readable', (new IsReadable)->toString());
     }
 
+    public function testCanBeNegated(): void
+    {
+        $constraint = new LogicalNot(new IsReadable);
+
+        $this->assertSame('is not readable', $constraint->toString());
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that "' . __FILE__ . '" is not readable.');
+
+        $constraint->evaluate(__FILE__);
+    }
+
     public function testIsCountable(): void
     {
         $this->assertCount(1, (new IsReadable));
+    }
+
+    public function testMatchesReturnsFalseForNonString(): void
+    {
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that "" is readable.');
+
+        (new IsReadable)->evaluate(123);
+    }
+
+    public function testReturnsAffirmativeStringInNonLogicalNotContext(): void
+    {
+        $this->assertSame(
+            'is readable',
+            LogicalAnd::fromConstraints(new IsReadable)->toString(),
+        );
     }
 }

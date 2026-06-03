@@ -97,8 +97,28 @@ final class IsJsonTest extends TestCase
         $this->assertSame('is valid JSON', (new IsJson)->toString());
     }
 
+    public function testCanBeNegated(): void
+    {
+        $constraint = new LogicalNot(new IsJson);
+
+        $this->assertSame('is not valid JSON', $constraint->toString());
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that a string is not valid JSON.');
+
+        $constraint->evaluate('{}');
+    }
+
     public function testIsCountable(): void
     {
         $this->assertCount(1, (new IsJson));
+    }
+
+    public function testReturnsAffirmativeStringInNonLogicalNotContext(): void
+    {
+        $this->assertSame(
+            'is valid JSON',
+            LogicalAnd::fromConstraints(new IsJson)->toString(),
+        );
     }
 }

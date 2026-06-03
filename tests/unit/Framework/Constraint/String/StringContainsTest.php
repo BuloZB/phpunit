@@ -246,8 +246,28 @@ final class StringContainsTest extends TestCase
         $this->assertSame($expected, new StringContains($needle, $ignoreCase, $ignoreLineEndings)->toString());
     }
 
+    public function testCanBeNegated(): void
+    {
+        $constraint = new LogicalNot(new StringContains('needle'));
+
+        $this->assertSame('does not contain "needle" [ASCII](length: 6)', $constraint->toString());
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that \'prefix needle suffix\' [ASCII](length: 20) does not contain "needle" [ASCII](length: 6).');
+
+        $constraint->evaluate('prefix needle suffix');
+    }
+
     public function testIsCountable(): void
     {
         $this->assertCount(1, (new StringContains('needle')));
+    }
+
+    public function testReturnsAffirmativeStringInNonLogicalNotContext(): void
+    {
+        $this->assertSame(
+            'contains "needle" [ASCII](length: 6)',
+            LogicalAnd::fromConstraints(new StringContains('needle'))->toString(),
+        );
     }
 }

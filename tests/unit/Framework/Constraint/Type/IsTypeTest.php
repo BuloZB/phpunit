@@ -148,9 +148,29 @@ final class IsTypeTest extends TestCase
         $this->assertSame('is of type array', new IsType(NativeType::Array)->toString());
     }
 
+    public function testCanBeNegated(): void
+    {
+        $constraint = new LogicalNot(new IsType(NativeType::Int));
+
+        $this->assertSame('is not of type int', $constraint->toString());
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that 1 is not of type int.');
+
+        $constraint->evaluate(1);
+    }
+
     public function testIsCountable(): void
     {
         $this->assertCount(1, new IsType(NativeType::Array));
+    }
+
+    public function testReturnsAffirmativeStringInNonLogicalNotContext(): void
+    {
+        $this->assertSame(
+            'is of type int',
+            LogicalAnd::fromConstraints(new IsType(NativeType::Int))->toString(),
+        );
     }
 
     private static function closedResource()

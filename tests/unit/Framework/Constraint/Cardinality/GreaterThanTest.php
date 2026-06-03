@@ -67,8 +67,28 @@ final class GreaterThanTest extends TestCase
         $this->assertSame('is greater than 0', new GreaterThan(0)->toString());
     }
 
+    public function testCanBeNegated(): void
+    {
+        $constraint = new LogicalNot(new GreaterThan(0));
+
+        $this->assertSame('is not greater than 0', $constraint->toString());
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that 1 is not greater than 0.');
+
+        $constraint->evaluate(1);
+    }
+
     public function testIsCountable(): void
     {
         $this->assertCount(1, (new GreaterThan(1)));
+    }
+
+    public function testReturnsAffirmativeStringInNonLogicalNotContext(): void
+    {
+        $this->assertSame(
+            'is greater than 0',
+            LogicalAnd::fromConstraints(new GreaterThan(0))->toString(),
+        );
     }
 }

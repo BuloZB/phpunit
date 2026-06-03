@@ -86,8 +86,28 @@ final class IsEmptyTest extends TestCase
         $this->assertSame('is empty', (new IsEmpty)->toString());
     }
 
+    public function testCanBeNegated(): void
+    {
+        $constraint = new LogicalNot(new IsEmpty);
+
+        $this->assertSame('is not empty', $constraint->toString());
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that an array is not empty.');
+
+        $constraint->evaluate([]);
+    }
+
     public function testIsCountable(): void
     {
         $this->assertCount(1, new IsEmpty);
+    }
+
+    public function testReturnsAffirmativeStringInNonLogicalNotContext(): void
+    {
+        $this->assertSame(
+            'is empty',
+            LogicalAnd::fromConstraints(new IsEmpty)->toString(),
+        );
     }
 }

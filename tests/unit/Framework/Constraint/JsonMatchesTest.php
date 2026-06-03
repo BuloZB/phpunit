@@ -417,8 +417,33 @@ EOT,
         $this->assertSame('matches JSON string "{"key":"value"}"', $constraint->toString());
     }
 
+    public function testCanBeNegated(): void
+    {
+        $constraint = new LogicalNot(new JsonMatches(json_encode(['key' => 'value'])));
+
+        $this->assertSame('does not match JSON string "{"key":"value"}"', $constraint->toString());
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that \'{"key":"value"}\' does not match JSON string "{"key":"value"}".');
+
+        $constraint->evaluate(json_encode(['key' => 'value']));
+    }
+
     public function testIsCountable(): void
     {
         $this->assertCount(1, (new JsonMatches(json_encode(['key' => 'value']))));
+    }
+
+    public function testMatchesReturnsFalseForNonString(): void
+    {
+        $this->assertFalse(new JsonMatches(json_encode(['key' => 'value']))->evaluate(123, returnResult: true));
+    }
+
+    public function testReturnsAffirmativeStringInNonLogicalNotContext(): void
+    {
+        $this->assertSame(
+            'matches JSON string "{"key":"value"}"',
+            LogicalAnd::fromConstraints(new JsonMatches(json_encode(['key' => 'value'])))->toString(),
+        );
     }
 }

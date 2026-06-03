@@ -102,8 +102,33 @@ final class StringEqualsStringIgnoringWhitespaceTest extends TestCase
         $this->assertSame('is equal to "hello world" ignoring whitespace', new StringEqualsStringIgnoringWhitespace('hello world')->toString());
     }
 
+    public function testCanBeNegated(): void
+    {
+        $constraint = new LogicalNot(new StringEqualsStringIgnoringWhitespace('hello world'));
+
+        $this->assertSame('is not equal to "hello world" ignoring whitespace', $constraint->toString());
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that \'hello world\' is not equal to "hello world" ignoring whitespace.');
+
+        $constraint->evaluate('hello world');
+    }
+
     public function testIsCountable(): void
     {
         $this->assertCount(1, new StringEqualsStringIgnoringWhitespace('hello world'));
+    }
+
+    public function testMatchesReturnsFalseForNonString(): void
+    {
+        $this->assertFalse(new StringEqualsStringIgnoringWhitespace('hello world')->evaluate(123, returnResult: true));
+    }
+
+    public function testReturnsAffirmativeStringInNonLogicalNotContext(): void
+    {
+        $this->assertSame(
+            'is equal to "hello world" ignoring whitespace',
+            LogicalAnd::fromConstraints(new StringEqualsStringIgnoringWhitespace('hello world'))->toString(),
+        );
     }
 }

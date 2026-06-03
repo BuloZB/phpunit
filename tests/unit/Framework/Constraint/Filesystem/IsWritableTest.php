@@ -65,8 +65,36 @@ final class IsWritableTest extends TestCase
         $this->assertSame('is writable', (new IsWritable)->toString());
     }
 
+    public function testCanBeNegated(): void
+    {
+        $constraint = new LogicalNot(new IsWritable);
+
+        $this->assertSame('is not writable', $constraint->toString());
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that "' . __FILE__ . '" is not writable.');
+
+        $constraint->evaluate(__FILE__);
+    }
+
     public function testIsCountable(): void
     {
         $this->assertCount(1, (new IsWritable));
+    }
+
+    public function testMatchesReturnsFalseForNonString(): void
+    {
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that "" is writable.');
+
+        (new IsWritable)->evaluate(123);
+    }
+
+    public function testReturnsAffirmativeStringInNonLogicalNotContext(): void
+    {
+        $this->assertSame(
+            'is writable',
+            LogicalAnd::fromConstraints(new IsWritable)->toString(),
+        );
     }
 }

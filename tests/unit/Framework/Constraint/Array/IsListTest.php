@@ -110,9 +110,29 @@ final class IsListTest extends TestCase
         $this->assertSame('is a list', (new IsList)->toString());
     }
 
+    public function testCanBeNegated(): void
+    {
+        $constraint = new LogicalNot(new IsList);
+
+        $this->assertSame('is not a list', $constraint->toString());
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs('Failed asserting that an array is not a list.');
+
+        $constraint->evaluate([1, 2]);
+    }
+
     public function testIsCountable(): void
     {
         $this->assertCount(1, (new IsList));
+    }
+
+    public function testReturnsAffirmativeStringInNonLogicalNotContext(): void
+    {
+        $this->assertSame(
+            'is a list',
+            LogicalAnd::fromConstraints(new IsList)->toString(),
+        );
     }
 
     private static function closedResource()

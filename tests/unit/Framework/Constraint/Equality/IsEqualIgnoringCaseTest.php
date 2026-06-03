@@ -298,9 +298,29 @@ EOT,
         $this->assertStringMatchesFormat($constraintAsString, $constraint->toString(true));
     }
 
+    public function testCanBeNegated(): void
+    {
+        $constraint = new LogicalNot(new IsEqualIgnoringCase('foo'));
+
+        $this->assertSame("is not equal to 'foo'", $constraint->toString());
+
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessageIs("Failed asserting that 'FOO' is not equal to 'foo'.");
+
+        $constraint->evaluate('FOO');
+    }
+
     public function testIsCountable(): void
     {
         $this->assertCount(1, (new IsEqualIgnoringCase(true)));
+    }
+
+    public function testReturnsAffirmativeStringInNonLogicalNotContext(): void
+    {
+        $this->assertSame(
+            "is equal to 'foo'",
+            LogicalAnd::fromConstraints(new IsEqualIgnoringCase('foo'))->toString(),
+        );
     }
 
     private static function stdClass(string $key, string $value): stdClass
