@@ -54,6 +54,8 @@ final class Builder
         'coverage-cobertura=',
         'coverage-crap4j=',
         'coverage-html=',
+        'without-class-view',
+        'without-file-view',
         'coverage-openclover=',
         'coverage-php=',
         'coverage-text==',
@@ -116,12 +118,17 @@ final class Builder
         'do-not-report-useless-tests',
         'random-order',
         'random-order-seed=',
+        'repeat=',
+        'retry=',
         'reverse-order',
         'reverse-list',
         'static-backup',
         'stderr',
         'fail-on-all-issues',
         'fail-on-deprecation',
+        'fail-on-self-deprecation',
+        'fail-on-direct-deprecation',
+        'fail-on-indirect-deprecation',
         'fail-on-phpunit-deprecation',
         'fail-on-phpunit-notice',
         'fail-on-phpunit-warning',
@@ -132,6 +139,9 @@ final class Builder
         'fail-on-skipped',
         'fail-on-warning',
         'do-not-fail-on-deprecation',
+        'do-not-fail-on-self-deprecation',
+        'do-not-fail-on-direct-deprecation',
+        'do-not-fail-on-indirect-deprecation',
         'do-not-fail-on-phpunit-deprecation',
         'do-not-fail-on-phpunit-notice',
         'do-not-fail-on-phpunit-warning',
@@ -183,6 +193,9 @@ final class Builder
     private const array CONFLICTING_OPTIONS = [
         ['--cache-result', '--do-not-cache-result'],
         ['--fail-on-deprecation', '--do-not-fail-on-deprecation'],
+        ['--fail-on-self-deprecation', '--do-not-fail-on-self-deprecation'],
+        ['--fail-on-direct-deprecation', '--do-not-fail-on-direct-deprecation'],
+        ['--fail-on-indirect-deprecation', '--do-not-fail-on-indirect-deprecation'],
         ['--fail-on-phpunit-deprecation', '--do-not-fail-on-phpunit-deprecation'],
         ['--fail-on-phpunit-notice', '--do-not-fail-on-phpunit-notice'],
         ['--fail-on-phpunit-warning', '--do-not-fail-on-phpunit-warning'],
@@ -194,6 +207,7 @@ final class Builder
         ['--fail-on-warning', '--do-not-fail-on-warning'],
         ['--resolve-dependencies', '--ignore-dependencies'],
         ['--random-order', '--reverse-order'],
+        ['--repeat', '--retry'],
         ['--generate-baseline', '--ignore-baseline'],
         ['--generate-baseline', '--use-baseline'],
         ['--no-output', '--compact'],
@@ -273,6 +287,8 @@ final class Builder
         $coverageCobertura                 = null;
         $coverageCrap4J                    = null;
         $coverageHtml                      = null;
+        $withoutClassView                  = null;
+        $withoutFileView                   = null;
         $coverageOpenClover                = null;
         $coveragePhp                       = null;
         $coverageText                      = null;
@@ -302,6 +318,9 @@ final class Builder
         $executionOrderDefects             = null;
         $failOnAllIssues                   = null;
         $failOnDeprecation                 = null;
+        $failOnSelfDeprecation             = null;
+        $failOnDirectDeprecation           = null;
+        $failOnIndirectDeprecation         = null;
         $failOnPhpunitDeprecation          = null;
         $failOnPhpunitNotice               = null;
         $failOnPhpunitWarning              = null;
@@ -312,6 +331,9 @@ final class Builder
         $failOnSkipped                     = null;
         $failOnWarning                     = null;
         $doNotFailOnDeprecation            = null;
+        $doNotFailOnSelfDeprecation        = null;
+        $doNotFailOnDirectDeprecation      = null;
+        $doNotFailOnIndirectDeprecation    = null;
         $doNotFailOnPhpunitDeprecation     = null;
         $doNotFailOnPhpunitNotice          = null;
         $doNotFailOnPhpunitWarning         = null;
@@ -363,6 +385,8 @@ final class Builder
         $noLogging                         = null;
         $processIsolation                  = null;
         $randomOrderSeed                   = null;
+        $repeat                            = null;
+        $retry                             = null;
         $reportUselessTests                = null;
         $resolveDependencies               = null;
         $reverseList                       = null;
@@ -465,6 +489,16 @@ final class Builder
 
                 case '--coverage-html':
                     $coverageHtml = $option[1];
+
+                    break;
+
+                case '--without-class-view':
+                    $withoutClassView = true;
+
+                    break;
+
+                case '--without-file-view':
+                    $withoutFileView = true;
 
                     break;
 
@@ -849,6 +883,21 @@ final class Builder
 
                     break;
 
+                case '--fail-on-self-deprecation':
+                    $failOnSelfDeprecation = true;
+
+                    break;
+
+                case '--fail-on-direct-deprecation':
+                    $failOnDirectDeprecation = true;
+
+                    break;
+
+                case '--fail-on-indirect-deprecation':
+                    $failOnIndirectDeprecation = true;
+
+                    break;
+
                 case '--fail-on-phpunit-deprecation':
                     $failOnPhpunitDeprecation = true;
 
@@ -896,6 +945,21 @@ final class Builder
 
                 case '--do-not-fail-on-deprecation':
                     $doNotFailOnDeprecation = true;
+
+                    break;
+
+                case '--do-not-fail-on-self-deprecation':
+                    $doNotFailOnSelfDeprecation = true;
+
+                    break;
+
+                case '--do-not-fail-on-direct-deprecation':
+                    $doNotFailOnDirectDeprecation = true;
+
+                    break;
+
+                case '--do-not-fail-on-indirect-deprecation':
+                    $doNotFailOnIndirectDeprecation = true;
 
                     break;
 
@@ -1209,6 +1273,44 @@ final class Builder
 
                     break;
 
+                case '--repeat':
+                    if (!is_numeric($option[1]) ||
+                        (string) (int) $option[1] !== $option[1] ||
+                        (int) $option[1] < 1) {
+                        EventFacade::emitter()->testRunnerTriggeredPhpunitWarning(
+                            sprintf(
+                                'Option "--repeat %s" ignored because "%s" is not a positive integer',
+                                $option[1],
+                                $option[1],
+                            ),
+                        );
+
+                        break;
+                    }
+
+                    $repeat = (int) $option[1];
+
+                    break;
+
+                case '--retry':
+                    if (!is_numeric($option[1]) ||
+                        (string) (int) $option[1] !== $option[1] ||
+                        (int) $option[1] < 1) {
+                        EventFacade::emitter()->testRunnerTriggeredPhpunitWarning(
+                            sprintf(
+                                'Option "--retry %s" ignored because "%s" is not a positive integer',
+                                $option[1],
+                                $option[1],
+                            ),
+                        );
+
+                        break;
+                    }
+
+                    $retry = (int) $option[1];
+
+                    break;
+
                 case '--resolve-dependencies':
                     $resolveDependencies = true;
 
@@ -1327,6 +1429,8 @@ final class Builder
             $coverageCobertura,
             $coverageCrap4J,
             $coverageHtml,
+            $withoutClassView,
+            $withoutFileView,
             $coverageOpenClover,
             $coveragePhp,
             $coverageText,
@@ -1348,6 +1452,9 @@ final class Builder
             $executionOrderDefects,
             $failOnAllIssues,
             $failOnDeprecation,
+            $failOnSelfDeprecation,
+            $failOnDirectDeprecation,
+            $failOnIndirectDeprecation,
             $failOnPhpunitDeprecation,
             $failOnPhpunitNotice,
             $failOnPhpunitWarning,
@@ -1358,6 +1465,9 @@ final class Builder
             $failOnSkipped,
             $failOnWarning,
             $doNotFailOnDeprecation,
+            $doNotFailOnSelfDeprecation,
+            $doNotFailOnDirectDeprecation,
+            $doNotFailOnIndirectDeprecation,
             $doNotFailOnPhpunitDeprecation,
             $doNotFailOnPhpunitNotice,
             $doNotFailOnPhpunitWarning,
@@ -1409,6 +1519,8 @@ final class Builder
             $noLogging,
             $processIsolation,
             $randomOrderSeed,
+            $repeat,
+            $retry,
             $reportUselessTests,
             $resolveDependencies,
             $reverseList,

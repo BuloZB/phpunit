@@ -35,7 +35,9 @@ use PHPUnit\Metadata\Api\Dependencies;
 use PHPUnit\Metadata\Api\Groups;
 use PHPUnit\Metadata\Api\HookMethods;
 use PHPUnit\Metadata\Api\Requirements;
+use PHPUnit\Metadata\InvalidAttribute;
 use PHPUnit\Metadata\MetadataCollection;
+use PHPUnit\Metadata\Parser\Registry as MetadataRegistry;
 use PHPUnit\Runner\Exception as RunnerException;
 use PHPUnit\Runner\Filter\Factory;
 use PHPUnit\Runner\Phpt\TestCase as PhptTestCase;
@@ -97,8 +99,10 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
     /**
      * @param ReflectionClass<TestCase> $class
      * @param list<non-empty-string>    $groups
+     * @param positive-int              $numberOfRuns
+     * @param positive-int              $maxAttempts
      */
-    public static function fromClassReflector(ReflectionClass $class, array $groups = []): static
+    public static function fromClassReflector(ReflectionClass $class, array $groups = [], int $numberOfRuns = 1, int $maxAttempts = 1): static
     {
         $testSuite = new static($class->getName());
 
@@ -119,7 +123,7 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
                 continue;
             }
 
-            $testSuite->addTestMethod($class, $method, $groups);
+            $testSuite->addTestMethod($class, $method, $groups, $numberOfRuns, $maxAttempts);
         }
 
         if ($testSuite->isEmpty()) {
@@ -189,10 +193,12 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
      *
      * @param ReflectionClass<TestCase> $testClass
      * @param list<non-empty-string>    $groups
+     * @param positive-int              $numberOfRuns
+     * @param positive-int              $maxAttempts
      *
      * @throws Exception
      */
-    public function addTestSuite(ReflectionClass $testClass, array $groups = []): void
+    public function addTestSuite(ReflectionClass $testClass, array $groups = [], int $numberOfRuns = 1, int $maxAttempts = 1): void
     {
         $className = $testClass->getName();
 
@@ -215,7 +221,7 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
             );
         }
 
-        $this->addTest(self::fromClassReflector($testClass, $groups), $groups);
+        $this->addTest(self::fromClassReflector($testClass, $groups, $numberOfRuns, $maxAttempts), $groups);
     }
 
     /**
@@ -227,18 +233,34 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
      * leaving the current test run untouched.
      *
      * @param list<non-empty-string> $groups
+     * @param positive-int           $numberOfRuns
+     * @param positive-int           $maxAttempts
      *
      * @throws Exception
      */
-    public function addTestFile(string $filename, array $groups = []): void
+    public function addTestFile(string $filename, array $groups = [], int $numberOfRuns = 1, int $maxAttempts = 1): void
     {
         try {
             if (str_ends_with($filename, '.phpt') && is_file($filename)) {
-                $this->addTest(new PhptTestCase($filename));
+                if ($numberOfRuns > 1) {
+                    $this->addTest(
+                        PhptRepeatTestSuite::for($filename, $numberOfRuns),
+                        $groups,
+                    );
+                } elseif ($maxAttempts > 1) {
+                    $this->addTest(
+                        PhptRetryTestSuite::for($filename, $maxAttempts),
+                        $groups,
+                    );
+                } else {
+                    $this->addTest(new PhptTestCase($filename));
+                }
             } else {
                 $this->addTestSuite(
                     (new TestSuiteLoader)->load($filename),
                     $groups,
+                    $numberOfRuns,
+                    $maxAttempts,
                 );
             }
         } catch (RunnerException $e) {
@@ -256,13 +278,15 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
      * Wrapper for addTestFile() that adds multiple test files.
      *
      * @param iterable<string> $fileNames
+     * @param positive-int     $numberOfRuns
+     * @param positive-int     $maxAttempts
      *
      * @throws Exception
      */
-    public function addTestFiles(iterable $fileNames): void
+    public function addTestFiles(iterable $fileNames, int $numberOfRuns = 1, int $maxAttempts = 1): void
     {
         foreach ($fileNames as $filename) {
-            $this->addTestFile((string) $filename);
+            $this->addTestFile((string) $filename, [], $numberOfRuns, $maxAttempts);
         }
     }
 
@@ -308,6 +332,12 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
     }
 
     /**
+     * The repetitions of a repeated test and the attempts of a retried test
+     * are aggregated by an IterativeTestSuite whose runTests() method
+     * implements the repetition and retry logic. Running the test cases
+     * returned by this method individually bypasses this logic: an
+     * IterativeTestSuite must be treated as an atomic unit.
+     *
      * @return list<PhptTestCase|TestCase>
      */
     public function collect(): array
@@ -359,27 +389,10 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
             return;
         }
 
-        /** @var list<Test> $tests */
-        $tests = [];
-
-        foreach ($this as $test) {
-            $tests[] = $test;
-        }
-
-        $tests = array_reverse($tests);
-
-        $this->tests  = [];
-        $this->groups = [];
-
-        while (($test = array_pop($tests)) !== null) {
-            if (TestResultFacade::shouldStop()) {
-                $emitter->testRunnerExecutionAborted();
-
-                break;
-            }
-
-            $test->run();
-        }
+        // runTests() receives the tests as an argument expression so that no
+        // local variable retains a reference to them; this allows each test
+        // object to be destructed as soon as it has run (see #5875)
+        $this->runTests($this->takeTests(), $emitter);
 
         $this->invokeMethodsAfterLastTest($emitter);
 
@@ -509,18 +522,76 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
     }
 
     /**
+     * Runs the tests aggregated by this test suite.
+     *
+     * @param list<Test> $tests
+     *
+     * @throws Event\RuntimeException
+     * @throws Exception
+     * @throws InvalidArgumentException
+     * @throws NoPreviousThrowableException
+     * @throws UnintentionallyCoveredCodeException
+     */
+    protected function runTests(array $tests, Event\Emitter $emitter): void
+    {
+        $tests = array_reverse($tests);
+
+        while (($test = array_pop($tests)) !== null) {
+            if (TestResultFacade::shouldStop()) {
+                $emitter->testRunnerExecutionAborted();
+
+                break;
+            }
+
+            $test->run();
+        }
+    }
+
+    /**
      * @param ReflectionClass<TestCase> $class
      * @param list<non-empty-string>    $groups
+     * @param positive-int              $numberOfRuns
+     * @param positive-int              $maxAttempts
      *
      * @throws Exception
      */
-    protected function addTestMethod(ReflectionClass $class, ReflectionMethod $method, array $groups): void
+    protected function addTestMethod(ReflectionClass $class, ReflectionMethod $method, array $groups, int $numberOfRuns = 1, int $maxAttempts = 1): void
     {
         $className  = $class->getName();
         $methodName = $method->getName();
 
+        $metadataErrors = $this->metadataErrorsFor($className, $methodName);
+
+        if ($metadataErrors !== []) {
+            $file = $method->getFileName();
+            $line = $method->getStartLine();
+
+            assert($file !== false && $file !== '');
+            assert($line !== false);
+
+            foreach ($metadataErrors as $message) {
+                Event\Facade::emitter()->testTriggeredPhpunitError(
+                    new TestMethod(
+                        $className,
+                        $methodName,
+                        $file,
+                        $line,
+                        Event\Code\TestDoxBuilder::fromClassNameAndMethodName(
+                            $className,
+                            $methodName,
+                        ),
+                        MetadataCollection::fromArray([]),
+                        Event\TestData\TestDataCollection::fromArray([]),
+                    ),
+                    $message,
+                );
+            }
+
+            return;
+        }
+
         try {
-            $test = (new TestBuilder)->build($class, $methodName, $groups);
+            $test = (new TestBuilder)->build($class, $methodName, $groups, $numberOfRuns, 1, $maxAttempts);
         } catch (InvalidDataProviderException $e) {
             if ($e->getProviderLabel() === null) {
                 $message = sprintf(
@@ -564,7 +635,7 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
             return;
         }
 
-        if ($test instanceof TestCase || $test instanceof DataProviderTestSuite) {
+        if ($test instanceof TestCase || $test instanceof DataProviderTestSuite || $test instanceof IterativeTestSuite) {
             $test->setDependencies(
                 Dependencies::dependencies($class->getName(), $methodName),
             );
@@ -577,6 +648,44 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
                 (new Groups)->groups($class->getName(), $methodName),
             ),
         );
+    }
+
+    /**
+     * Removes the tests aggregated by this test suite from it and returns them.
+     *
+     * @return list<Test>
+     */
+    private function takeTests(): array
+    {
+        $tests = [];
+
+        foreach ($this as $test) {
+            $tests[] = $test;
+        }
+
+        $this->tests  = [];
+        $this->groups = [];
+
+        return $tests;
+    }
+
+    /**
+     * @param class-string     $className
+     * @param non-empty-string $methodName
+     *
+     * @return list<non-empty-string>
+     */
+    private function metadataErrorsFor(string $className, string $methodName): array
+    {
+        $errors = (new Requirements)->invalidVersionRequirementsFor($className, $methodName);
+
+        foreach (MetadataRegistry::parser()->forClassAndMethod($className, $methodName)->isInvalidAttribute() as $metadata) {
+            assert($metadata instanceof InvalidAttribute);
+
+            $errors[] = $metadata->message();
+        }
+
+        return $errors;
     }
 
     private function clearCaches(): void

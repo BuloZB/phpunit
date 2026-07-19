@@ -31,24 +31,24 @@
     "require": {
         "php": ">=8.4.1",
         "ext-dom": "*",
+        "ext-filter": "*",
         "ext-json": "*",
         "ext-libxml": "*",
         "ext-mbstring": "*",
-        "ext-xml": "*",
         "ext-xmlwriter": "*",
         "myclabs/deep-copy": "^1.13.4",
         "phar-io/manifest": "^2.0.4",
         "phar-io/version": "^3.2.1",
-        "phpunit/php-code-coverage": "^14.2",
+        "phpunit/php-code-coverage": "^14.3",
         "phpunit/php-file-iterator": "^7.0.0",
         "phpunit/php-invoker": "^7.0.0",
         "phpunit/php-text-template": "^6.0.0",
         "phpunit/php-timer": "^9.0.0",
         "sebastian/cli-parser": "^5.0.0",
-        "sebastian/comparator": "^8.3.0",
+        "sebastian/comparator": "^8.4",
         "sebastian/diff": "^9.0",
         "sebastian/environment": "^9.3.2",
-        "sebastian/exporter": "^8.1.0",
+        "sebastian/exporter": "^8.2",
         "sebastian/file-filter": "^1.0",
         "sebastian/git-state": "^1.0",
         "sebastian/global-state": "^9.0.1",
@@ -134,7 +134,7 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-main": "13.2-dev"
+            "dev-main": "13.3-dev"
         }
     }
 }

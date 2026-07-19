@@ -1,10 +1,5 @@
 --TEST--
 Extendable class with property with non-final set property hook
---SKIPIF--
-<?php declare(strict_types=1);
-if (!method_exists(ReflectionProperty::class, 'isFinal')) {
-    print 'skip: PHP 8.4 is required.';
-}
 --FILE--
 <?php declare(strict_types=1);
 class Foo
@@ -38,6 +33,14 @@ class TestStubFoo extends Foo implements PHPUnit\Framework\MockObject\StubIntern
     use PHPUnit\Framework\MockObject\DoubledCloneMethod;
 
     public string $bar {
+        get {
+            return $this->__phpunit_getInvocationHandler()->invoke(
+                new \PHPUnit\Framework\MockObject\Invocation(
+                    'TestStubFoo', '$bar::get', [], 'string', $this
+                )
+            );
+        }
+
         set (string $value) {
             $this->__phpunit_getInvocationHandler()->invoke(
                 new \PHPUnit\Framework\MockObject\Invocation(

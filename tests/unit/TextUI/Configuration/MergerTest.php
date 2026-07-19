@@ -66,6 +66,70 @@ final class MergerTest extends TestCase
         $this->assertTrue($mergedConfig->branchCoverage());
     }
 
+    public function testClassViewAndFileViewForHtmlCodeCoverageReportAreEnabledByDefault(): void
+    {
+        $fromFile = (new Loader)->load(TEST_FILES_PATH . 'configuration_codecoverage.xml');
+
+        $fromCli = (new Builder)->fromParameters([]);
+
+        $mergedConfig = (new Merger)->merge($fromCli, $fromFile);
+
+        $this->assertTrue($mergedConfig->coverageHtmlClassView());
+        $this->assertTrue($mergedConfig->coverageHtmlFileView());
+    }
+
+    public function testClassViewForHtmlCodeCoverageReportCanBeDisabledFromXmlConfiguration(): void
+    {
+        $fromFile = (new Loader)->load(TEST_FILES_PATH . 'configuration_codecoverage_html_classview.xml');
+
+        $fromCli = (new Builder)->fromParameters([]);
+
+        $mergedConfig = (new Merger)->merge($fromCli, $fromFile);
+
+        $this->assertFalse($mergedConfig->coverageHtmlClassView());
+        $this->assertTrue($mergedConfig->coverageHtmlFileView());
+    }
+
+    public function testClassViewForHtmlCodeCoverageReportCanBeDisabledFromCli(): void
+    {
+        $fromFile = (new Loader)->load(TEST_FILES_PATH . 'configuration_codecoverage.xml');
+
+        $fromCli = (new Builder)->fromParameters([
+            '--without-class-view',
+        ]);
+
+        $mergedConfig = (new Merger)->merge($fromCli, $fromFile);
+
+        $this->assertFalse($mergedConfig->coverageHtmlClassView());
+        $this->assertTrue($mergedConfig->coverageHtmlFileView());
+    }
+
+    public function testFileViewForHtmlCodeCoverageReportCanBeDisabledFromXmlConfiguration(): void
+    {
+        $fromFile = (new Loader)->load(TEST_FILES_PATH . 'configuration_codecoverage_html_fileview.xml');
+
+        $fromCli = (new Builder)->fromParameters([]);
+
+        $mergedConfig = (new Merger)->merge($fromCli, $fromFile);
+
+        $this->assertTrue($mergedConfig->coverageHtmlClassView());
+        $this->assertFalse($mergedConfig->coverageHtmlFileView());
+    }
+
+    public function testFileViewForHtmlCodeCoverageReportCanBeDisabledFromCli(): void
+    {
+        $fromFile = (new Loader)->load(TEST_FILES_PATH . 'configuration_codecoverage.xml');
+
+        $fromCli = (new Builder)->fromParameters([
+            '--without-file-view',
+        ]);
+
+        $mergedConfig = (new Merger)->merge($fromCli, $fromFile);
+
+        $this->assertTrue($mergedConfig->coverageHtmlClassView());
+        $this->assertFalse($mergedConfig->coverageHtmlFileView());
+    }
+
     public function testCoverageTargetingCanBeDisabledFromCli(): void
     {
         $fromFile = (new Loader)->load(TEST_FILES_PATH . 'configuration_codecoverage.xml');
@@ -88,6 +152,18 @@ final class MergerTest extends TestCase
         $mergedConfig = (new Merger)->merge($fromCli, $fromFile);
 
         $this->assertFalse($mergedConfig->disableCoverageTargeting());
+    }
+
+    public function testCoverageDriverIsCarriedOverFromXmlConfiguration(): void
+    {
+        $fromFile = (new Loader)->load(TEST_FILES_PATH . 'configuration_codecoverage_driver.xml');
+
+        $fromCli = (new Builder)->fromParameters([]);
+
+        $mergedConfig = (new Merger)->merge($fromCli, $fromFile);
+
+        $this->assertTrue($mergedConfig->hasCoverageDriver());
+        $this->assertSame('My\Custom\Driver', $mergedConfig->coverageDriver());
     }
 
     public function testNoCoverageShouldOnlyAffectXmlConfiguration(): void
@@ -175,5 +251,71 @@ final class MergerTest extends TestCase
         $this->assertFalse($mergedConfig->displayDetailsOnTestsThatTriggerWarnings());
         $this->assertFalse($mergedConfig->displayDetailsOnIncompleteTests());
         $this->assertFalse($mergedConfig->displayDetailsOnSkippedTests());
+    }
+
+    #[Group('issue-6484')]
+    public function testFailOnDeprecationTriggerOptionsCanBeConfiguredUsingXmlConfigurationFile(): void
+    {
+        $fromFile = (new Loader)->load(TEST_FILES_PATH . 'configuration-issue-6484.xml');
+
+        $this->assertTrue($fromFile->phpunit()->failOnSelfDeprecation());
+        $this->assertTrue($fromFile->phpunit()->failOnDirectDeprecation());
+        $this->assertTrue($fromFile->phpunit()->failOnIndirectDeprecation());
+
+        $fromCli = (new Builder)->fromParameters([]);
+
+        $mergedConfig = (new Merger)->merge($fromCli, $fromFile);
+
+        $this->assertTrue($mergedConfig->failOnSelfDeprecation());
+        $this->assertTrue($mergedConfig->failOnDirectDeprecation());
+        $this->assertTrue($mergedConfig->failOnIndirectDeprecation());
+
+        $this->assertFalse($mergedConfig->doNotFailOnSelfDeprecation());
+        $this->assertFalse($mergedConfig->doNotFailOnDirectDeprecation());
+        $this->assertFalse($mergedConfig->doNotFailOnIndirectDeprecation());
+
+        $this->assertTrue($mergedConfig->displayDetailsOnTestsThatTriggerDeprecations());
+    }
+
+    #[Group('issue-6484')]
+    public function testFailOnDeprecationTriggerOptionsCanBeConfiguredUsingCommandLineOptions(): void
+    {
+        $fromFile = (new Loader)->load(TEST_FILES_PATH . 'configuration-issue-6484.xml');
+
+        $fromCli = (new Builder)->fromParameters([
+            '--do-not-fail-on-self-deprecation',
+            '--do-not-fail-on-direct-deprecation',
+            '--do-not-fail-on-indirect-deprecation',
+        ]);
+
+        $this->assertTrue($fromCli->doNotFailOnSelfDeprecation());
+        $this->assertTrue($fromCli->doNotFailOnDirectDeprecation());
+        $this->assertTrue($fromCli->doNotFailOnIndirectDeprecation());
+
+        $mergedConfig = (new Merger)->merge($fromCli, $fromFile);
+
+        $this->assertTrue($mergedConfig->doNotFailOnSelfDeprecation());
+        $this->assertTrue($mergedConfig->doNotFailOnDirectDeprecation());
+        $this->assertTrue($mergedConfig->doNotFailOnIndirectDeprecation());
+
+        $this->assertFalse($mergedConfig->displayDetailsOnTestsThatTriggerDeprecations());
+
+        $fromCli = (new Builder)->fromParameters([
+            '--fail-on-self-deprecation',
+            '--fail-on-direct-deprecation',
+            '--fail-on-indirect-deprecation',
+        ]);
+
+        $this->assertTrue($fromCli->failOnSelfDeprecation());
+        $this->assertTrue($fromCli->failOnDirectDeprecation());
+        $this->assertTrue($fromCli->failOnIndirectDeprecation());
+
+        $mergedConfig = (new Merger)->merge($fromCli, (new Loader)->load(TEST_FILES_PATH . 'configuration-issue-6340.xml'));
+
+        $this->assertTrue($mergedConfig->failOnSelfDeprecation());
+        $this->assertTrue($mergedConfig->failOnDirectDeprecation());
+        $this->assertTrue($mergedConfig->failOnIndirectDeprecation());
+
+        $this->assertTrue($mergedConfig->displayDetailsOnTestsThatTriggerDeprecations());
     }
 }

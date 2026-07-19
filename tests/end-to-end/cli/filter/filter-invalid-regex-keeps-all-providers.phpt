@@ -1,12 +1,12 @@
 --TEST--
-phpunit --filter 'foo}' (filter that compiles to an invalid regex) keeps all data providers running
+phpunit --filter 'foo}#0' (filter whose method name portion compiles to an invalid regex) keeps all data providers running
 --FILE--
 <?php declare(strict_types=1);
 $_SERVER['argv'][] = '--do-not-cache-result';
 $_SERVER['argv'][] = '--no-configuration';
 $_SERVER['argv'][] = '--debug';
 $_SERVER['argv'][] = '--filter';
-$_SERVER['argv'][] = 'foo}';
+$_SERVER['argv'][] = 'foo}#0';
 $_SERVER['argv'][] = __DIR__ . '/../../_files/DataProviderSkipWhenFilteredTest.php';
 
 require_once __DIR__ . '/../../../bootstrap.php';

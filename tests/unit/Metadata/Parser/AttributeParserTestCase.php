@@ -14,13 +14,15 @@ use PHPUnit\Framework\Attributes\TestDox;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Metadata\DependsOnClass;
 use PHPUnit\Metadata\DependsOnMethod;
-use PHPUnit\Metadata\InvalidAttributeException;
+use PHPUnit\Metadata\InvalidAttribute;
+use PHPUnit\Metadata\Repeat;
 use PHPUnit\Metadata\RequiresEnvironmentVariable;
 use PHPUnit\Metadata\RequiresPhp;
 use PHPUnit\Metadata\RequiresPhpExtension;
 use PHPUnit\Metadata\RequiresPhpunit;
 use PHPUnit\Metadata\RequiresPhpunitExtension;
 use PHPUnit\Metadata\RequiresSetting;
+use PHPUnit\Metadata\Retry;
 use PHPUnit\Metadata\Version\ComparisonRequirement;
 use PHPUnit\Metadata\Version\ConstraintRequirement;
 use PHPUnit\Metadata\WithEnvironmentVariable;
@@ -29,6 +31,7 @@ use PHPUnit\TestFixture\Metadata\Attribute\AllowMockObjectsWithoutExpectationsOn
 use PHPUnit\TestFixture\Metadata\Attribute\AnotherTest;
 use PHPUnit\TestFixture\Metadata\Attribute\BackupGlobalsTest;
 use PHPUnit\TestFixture\Metadata\Attribute\BackupStaticPropertiesTest;
+use PHPUnit\TestFixture\Metadata\Attribute\CoversFilesystemTest;
 use PHPUnit\TestFixture\Metadata\Attribute\CoversNothingTest;
 use PHPUnit\TestFixture\Metadata\Attribute\CoversTest;
 use PHPUnit\TestFixture\Metadata\Attribute\DataProviderClosureTest;
@@ -52,6 +55,7 @@ use PHPUnit\TestFixture\Metadata\Attribute\NonPhpunitAttributeTest;
 use PHPUnit\TestFixture\Metadata\Attribute\PhpunitAttributeThatDoesNotExistTest;
 use PHPUnit\TestFixture\Metadata\Attribute\PreserveGlobalStateTest;
 use PHPUnit\TestFixture\Metadata\Attribute\ProcessIsolationTest;
+use PHPUnit\TestFixture\Metadata\Attribute\RepeatTest;
 use PHPUnit\TestFixture\Metadata\Attribute\RequiresEnvironmentVariableTest;
 use PHPUnit\TestFixture\Metadata\Attribute\RequiresFunctionTest;
 use PHPUnit\TestFixture\Metadata\Attribute\RequiresMethodTest;
@@ -62,9 +66,11 @@ use PHPUnit\TestFixture\Metadata\Attribute\RequiresPhpTest;
 use PHPUnit\TestFixture\Metadata\Attribute\RequiresPhpunitExtensionTest;
 use PHPUnit\TestFixture\Metadata\Attribute\RequiresPhpunitTest;
 use PHPUnit\TestFixture\Metadata\Attribute\RequiresSettingTest;
+use PHPUnit\TestFixture\Metadata\Attribute\RetryTest;
 use PHPUnit\TestFixture\Metadata\Attribute\SmallTest;
 use PHPUnit\TestFixture\Metadata\Attribute\TestDoxTest;
 use PHPUnit\TestFixture\Metadata\Attribute\TestWithTest;
+use PHPUnit\TestFixture\Metadata\Attribute\UsesFilesystemTest;
 use PHPUnit\TestFixture\Metadata\Attribute\UsesTest;
 use PHPUnit\TestFixture\Metadata\Attribute\WithEnvironmentVariableTest;
 use PHPUnit\TestFixture\Metadata\Attribute\WithoutErrorHandlerTest;
@@ -169,6 +175,36 @@ abstract class AttributeParserTestCase extends TestCase
         $this->assertTrue($metadata->asArray()[0]->isCoversMethod());
         $this->assertSame(Example::class, $metadata->asArray()[0]->className());
         $this->assertSame('method', $metadata->asArray()[0]->methodName());
+    }
+
+    #[TestDox('Parses #[CoversFile] attribute on class')]
+    public function test_parses_CoversFile_attribute_on_class(): void
+    {
+        $metadata = $this->parser()->forClass(CoversFilesystemTest::class)->isCoversFile();
+
+        $this->assertCount(1, $metadata);
+        $this->assertTrue($metadata->asArray()[0]->isCoversFile());
+        $this->assertSame('source.php', $metadata->asArray()[0]->path());
+    }
+
+    #[TestDox('Parses #[CoversDirectory] attribute on class')]
+    public function test_parses_CoversDirectory_attribute_on_class(): void
+    {
+        $metadata = $this->parser()->forClass(CoversFilesystemTest::class)->isCoversDirectory();
+
+        $this->assertCount(1, $metadata);
+        $this->assertTrue($metadata->asArray()[0]->isCoversDirectory());
+        $this->assertSame('source', $metadata->asArray()[0]->directory());
+    }
+
+    #[TestDox('Parses #[CoversDirectoryRecursively] attribute on class')]
+    public function test_parses_CoversDirectoryRecursively_attribute_on_class(): void
+    {
+        $metadata = $this->parser()->forClass(CoversFilesystemTest::class)->isCoversDirectoryRecursively();
+
+        $this->assertCount(1, $metadata);
+        $this->assertTrue($metadata->asArray()[0]->isCoversDirectoryRecursively());
+        $this->assertSame('source', $metadata->asArray()[0]->directory());
     }
 
     #[TestDox('Parses #[CoversNothing] attribute on class')]
@@ -542,6 +578,36 @@ abstract class AttributeParserTestCase extends TestCase
         $this->assertTrue($metadata->asArray()[0]->isUsesMethod());
         $this->assertSame(Example::class, $metadata->asArray()[0]->className());
         $this->assertSame('method', $metadata->asArray()[0]->methodName());
+    }
+
+    #[TestDox('Parses #[UsesFile] attribute on class')]
+    public function test_parses_UsesFile_attribute_on_class(): void
+    {
+        $metadata = $this->parser()->forClass(UsesFilesystemTest::class)->isUsesFile();
+
+        $this->assertCount(1, $metadata);
+        $this->assertTrue($metadata->asArray()[0]->isUsesFile());
+        $this->assertSame('source.php', $metadata->asArray()[0]->path());
+    }
+
+    #[TestDox('Parses #[UsesDirectory] attribute on class')]
+    public function test_parses_UsesDirectory_attribute_on_class(): void
+    {
+        $metadata = $this->parser()->forClass(UsesFilesystemTest::class)->isUsesDirectory();
+
+        $this->assertCount(1, $metadata);
+        $this->assertTrue($metadata->asArray()[0]->isUsesDirectory());
+        $this->assertSame('source', $metadata->asArray()[0]->directory());
+    }
+
+    #[TestDox('Parses #[UsesDirectoryRecursively] attribute on class')]
+    public function test_parses_UsesDirectoryRecursively_attribute_on_class(): void
+    {
+        $metadata = $this->parser()->forClass(UsesFilesystemTest::class)->isUsesDirectoryRecursively();
+
+        $this->assertCount(1, $metadata);
+        $this->assertTrue($metadata->asArray()[0]->isUsesDirectoryRecursively());
+        $this->assertSame('source', $metadata->asArray()[0]->directory());
     }
 
     #[TestDox('Parses #[After] attribute on class')]
@@ -1213,6 +1279,37 @@ abstract class AttributeParserTestCase extends TestCase
         $this->assertSame('another-ticket', $metadata->asArray()[1]->groupName());
     }
 
+    #[TestDox('Parses #[Repeat] attribute on method')]
+    public function test_parses_Repeat_attribute_on_method(): void
+    {
+        $metadata = $this->parser()->forMethod(RepeatTest::class, 'testOne')->isRepeat();
+
+        $this->assertCount(1, $metadata);
+        $this->assertTrue($metadata->asArray()[0]->isRepeat());
+
+        $repeat = $metadata->asArray()[0];
+
+        assert($repeat instanceof Repeat);
+
+        $this->assertSame(5, $repeat->times());
+        $this->assertSame(2, $repeat->failureThreshold());
+    }
+
+    #[TestDox('Parses #[Retry] attribute on method')]
+    public function test_parses_Retry_attribute_on_method(): void
+    {
+        $metadata = $this->parser()->forMethod(RetryTest::class, 'testOne')->isRetry();
+
+        $this->assertCount(1, $metadata);
+        $this->assertTrue($metadata->asArray()[0]->isRetry());
+
+        $retry = $metadata->asArray()[0];
+
+        assert($retry instanceof Retry);
+
+        $this->assertSame(5, $retry->maxAttempts());
+    }
+
     #[TestDox('Parses #[WithoutErrorHandler] attribute on method')]
     public function test_parses_WithoutErrorHandler_attribute_on_method(): void
     {
@@ -1244,18 +1341,38 @@ abstract class AttributeParserTestCase extends TestCase
         $this->assertTrue($metadata->isEmpty());
     }
 
-    public function test_handles_ReflectionException_raised_when_instantiating_attribute_on_class(): void
+    public function testRecordsInvalidAttributeMetadataWhenAttributeCannotBeInstantiatedOnClass(): void
     {
-        $this->expectException(InvalidAttributeException::class);
+        $metadata = $this->parser()->forClass(DuplicateSmallAttributeTest::class)->isInvalidAttribute();
 
-        $this->parser()->forClass(DuplicateSmallAttributeTest::class);
+        $this->assertTrue($metadata->isNotEmpty());
+
+        $invalidAttribute = $metadata->asArray()[0];
+
+        assert($invalidAttribute instanceof InvalidAttribute);
+
+        $this->assertTrue($invalidAttribute->isInvalidAttribute());
+        $this->assertStringContainsString(
+            'Invalid attribute PHPUnit\Framework\Attributes\Small for class ' . DuplicateSmallAttributeTest::class,
+            $invalidAttribute->message(),
+        );
     }
 
-    public function test_handles_ReflectionException_raised_when_instantiating_attribute_on_method(): void
+    public function testRecordsInvalidAttributeMetadataWhenAttributeCannotBeInstantiatedOnMethod(): void
     {
-        $this->expectException(InvalidAttributeException::class);
+        $metadata = $this->parser()->forMethod(DuplicateTestAttributeTest::class, 'testOne')->isInvalidAttribute();
 
-        $this->parser()->forMethod(DuplicateTestAttributeTest::class, 'testOne');
+        $this->assertTrue($metadata->isNotEmpty());
+
+        $invalidAttribute = $metadata->asArray()[0];
+
+        assert($invalidAttribute instanceof InvalidAttribute);
+
+        $this->assertTrue($invalidAttribute->isInvalidAttribute());
+        $this->assertStringContainsString(
+            'Invalid attribute PHPUnit\Framework\Attributes\Test for method ' . DuplicateTestAttributeTest::class . '::testOne()',
+            $invalidAttribute->message(),
+        );
     }
 
     abstract protected function parser(): Parser;

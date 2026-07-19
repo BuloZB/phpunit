@@ -54,6 +54,7 @@ use PHPUnit\Runner\Baseline\Writer;
 use PHPUnit\Runner\CodeCoverage;
 use PHPUnit\Runner\CodeCoverageInitializationStatus;
 use PHPUnit\Runner\DeprecationCollector\Facade as DeprecationCollector;
+use PHPUnit\Runner\DeprecationFilter;
 use PHPUnit\Runner\DirectoryDoesNotExistException;
 use PHPUnit\Runner\ErrorHandler;
 use PHPUnit\Runner\Extension\ExtensionBootstrapper;
@@ -205,6 +206,10 @@ final readonly class Application
 
             EventFacade::instance()->seal();
 
+            $this->configureDeprecationTriggers($configuration);
+            $this->configureIssueTriggerResolvers($configuration);
+            $this->configureDeprecationFilters($configuration);
+
             ErrorHandler::instance()->registerForNonTestCaseContext();
 
             $testSuite = $this->buildTestSuite($configuration);
@@ -240,8 +245,6 @@ final readonly class Application
                 $printer->print(PHP_EOL);
             }
 
-            $this->configureDeprecationTriggers($configuration);
-            $this->configureIssueTriggerResolvers($configuration);
             $this->registerInterruptHandler();
 
             $timer = new Timer;
@@ -299,6 +302,8 @@ final readonly class Application
                     );
                 }
             }
+
+            CodeCoverage::instance()->warnAboutFilesThatCouldNotBeParsed();
 
             $result = TestResultFacade::result();
 
@@ -981,6 +986,38 @@ final readonly class Application
             }
 
             ErrorHandler::instance()->addIssueTriggerResolver($resolver);
+        }
+    }
+
+    private function configureDeprecationFilters(Configuration $configuration): void
+    {
+        foreach ($configuration->source()->deprecationFilters() as $className) {
+            if (!class_exists($className)) {
+                EventFacade::emitter()->testRunnerTriggeredPhpunitWarning(
+                    sprintf(
+                        'Class %s cannot be used as a deprecation filter because it does not exist',
+                        $className,
+                    ),
+                );
+
+                continue;
+            }
+
+            $filter = new $className;
+
+            if (!$filter instanceof DeprecationFilter) {
+                EventFacade::emitter()->testRunnerTriggeredPhpunitWarning(
+                    sprintf(
+                        'Class %s cannot be used as a deprecation filter because it does not implement %s',
+                        $className,
+                        DeprecationFilter::class,
+                    ),
+                );
+
+                continue;
+            }
+
+            ErrorHandler::instance()->addDeprecationFilter($filter);
         }
     }
 

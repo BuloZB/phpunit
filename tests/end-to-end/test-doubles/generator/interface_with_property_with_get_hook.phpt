@@ -1,10 +1,5 @@
 --TEST--
 Interface with property with get property hook
---SKIPIF--
-<?php declare(strict_types=1);
-if (!method_exists(ReflectionProperty::class, 'isFinal')) {
-    print 'skip: PHP 8.4 is required.';
-}
 --FILE--
 <?php declare(strict_types=1);
 interface Foo
@@ -38,6 +33,14 @@ class TestStubFoo implements PHPUnit\Framework\MockObject\StubInternal, Foo
             return $this->__phpunit_getInvocationHandler()->invoke(
                 new \PHPUnit\Framework\MockObject\Invocation(
                     'TestStubFoo', '$bar::get', [], 'string', $this
+                )
+            );
+        }
+
+        set (string $value) {
+            $this->__phpunit_getInvocationHandler()->invoke(
+                new \PHPUnit\Framework\MockObject\Invocation(
+                    'TestStubFoo', '$bar::set', [$value], 'void', $this
                 )
             );
         }

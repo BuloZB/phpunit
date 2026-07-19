@@ -36,6 +36,7 @@ use PHPUnit\Event\Test\PhpWarningTriggered;
 use PHPUnit\Event\Test\WarningTriggered;
 use PHPUnit\Event\TestData\TestDataCollection;
 use PHPUnit\Event\TestRunner\ChildProcessErrored;
+use PHPUnit\Event\TestRunner\ChildProcessReason;
 use PHPUnit\Event\TestRunner\ExecutionStarted;
 use PHPUnit\Event\TestSuite\TestSuiteWithName;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -334,6 +335,19 @@ final class ProgressPrinterTest extends TestCase
         $this->assertStringStartsWith('.', $buffer());
     }
 
+    public function testTriggeredDeprecationIsIgnoredWhenIgnoredByFilter(): void
+    {
+        [$printer, $buffer] = $this->printer();
+        $progress           = $this->progressPrinter($printer);
+
+        $progress->testRunnerExecutionStarted($this->executionStarted(1));
+        $progress->testPrepared();
+        $progress->testTriggeredDeprecation($this->deprecationEvent(ignoredByFilter: true));
+        $progress->testFinished();
+
+        $this->assertStringStartsWith('.', $buffer());
+    }
+
     public function testTriggeredDeprecationIsIgnoredWhenSelfAndIgnoreSelf(): void
     {
         [$printer, $buffer] = $this->printer();
@@ -420,6 +434,19 @@ final class ProgressPrinterTest extends TestCase
         $progress->testRunnerExecutionStarted($this->executionStarted(1));
         $progress->testPrepared();
         $progress->testTriggeredPhpDeprecation($this->phpDeprecationEvent(ignoredByTest: true));
+        $progress->testFinished();
+
+        $this->assertStringStartsWith('.', $buffer());
+    }
+
+    public function testTriggeredPhpDeprecationIsIgnoredWhenIgnoredByFilter(): void
+    {
+        [$printer, $buffer] = $this->printer();
+        $progress           = $this->progressPrinter($printer);
+
+        $progress->testRunnerExecutionStarted($this->executionStarted(1));
+        $progress->testPrepared();
+        $progress->testTriggeredPhpDeprecation($this->phpDeprecationEvent(ignoredByFilter: true));
         $progress->testFinished();
 
         $this->assertStringStartsWith('.', $buffer());
@@ -802,7 +829,11 @@ final class ProgressPrinterTest extends TestCase
 
     private function childProcessErroredEvent(): ChildProcessErrored
     {
-        return new ChildProcessErrored($this->telemetryInfo());
+        return new ChildProcessErrored(
+            $this->telemetryInfo(),
+            ChildProcessReason::TestRequiringProcessIsolation,
+            'message',
+        );
     }
 
     private function noticeEvent(bool $suppressed, bool $ignoredByBaseline): NoticeTriggered
@@ -835,6 +866,7 @@ final class ProgressPrinterTest extends TestCase
         bool $suppressed = false,
         bool $ignoredByBaseline = false,
         bool $ignoredByTest = false,
+        bool $ignoredByFilter = false,
         ?IssueTrigger $trigger = null,
     ): DeprecationTriggered {
         return new DeprecationTriggered(
@@ -846,6 +878,7 @@ final class ProgressPrinterTest extends TestCase
             $suppressed,
             $ignoredByBaseline,
             $ignoredByTest,
+            $ignoredByFilter,
             $trigger ?? IssueTrigger::from(null, null),
             'stack trace',
         );
@@ -855,6 +888,7 @@ final class ProgressPrinterTest extends TestCase
         bool $suppressed = false,
         bool $ignoredByBaseline = false,
         bool $ignoredByTest = false,
+        bool $ignoredByFilter = false,
         ?IssueTrigger $trigger = null,
     ): PhpDeprecationTriggered {
         return new PhpDeprecationTriggered(
@@ -866,6 +900,7 @@ final class ProgressPrinterTest extends TestCase
             $suppressed,
             $ignoredByBaseline,
             $ignoredByTest,
+            $ignoredByFilter,
             $trigger ?? IssueTrigger::from(null, null),
         );
     }

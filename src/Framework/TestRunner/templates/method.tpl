@@ -59,6 +59,8 @@ function __phpunit_run_isolated_test()
 
     $test->setData('{dataName}', unserialize('{data}'));
     $test->setDependencyInput(unserialize('{dependencyInput}'));
+    $test->setRepetition({repetition}, {totalRepetitions});
+    $test->setAttempt({attempt}, {maxAttempts});
     $test->setInIsolation(true);
 
     ob_end_clean();
@@ -72,6 +74,7 @@ function __phpunit_run_isolated_test()
         '{processResultNonce}' . serialize(
             (object)[
                 'testResult'    => $test->result(),
+                'status'        => $test->status(),
                 'codeCoverage'  => {collectCodeCoverageInformation} ? CodeCoverage::instance()->codeCoverage() : null,
                 'numAssertions' => $test->numberOfAssertionsPerformed(),
                 'output'        => $output,

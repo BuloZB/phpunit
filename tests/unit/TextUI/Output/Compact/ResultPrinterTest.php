@@ -837,6 +837,7 @@ final class ResultPrinterTest extends TestCase
                             1,
                             false,
                             false,
+                            false,
                             IssueTrigger::from(null, null),
                             'stack trace',
                         ),
@@ -859,6 +860,7 @@ final class ResultPrinterTest extends TestCase
                             'message',
                             'Foo.php',
                             1,
+                            false,
                             false,
                             false,
                             IssueTrigger::from(null, null),
@@ -983,6 +985,12 @@ final class ResultPrinterTest extends TestCase
             $phpNotices,
             $phpWarnings,
             0,
+            [
+                'self'     => 0,
+                'direct'   => 0,
+                'indirect' => 0,
+                'unknown'  => 0,
+            ],
         );
     }
 

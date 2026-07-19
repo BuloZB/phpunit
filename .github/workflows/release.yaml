@@ -25,12 +25,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
       - name: Install PHP with extensions
-        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # 2.37.1
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: 8.4
           coverage: none
@@ -46,11 +46,11 @@ jobs:
       - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$RELEASE_TAG" --title "PHPUnit $RELEASE_TAG" --notes-file release-notes.md --target "13.2"
+        run: gh release create "$RELEASE_TAG" --title "PHPUnit $RELEASE_TAG" --notes-file release-notes.md --target "13.3"
 
       - name: Announce release
         id: mastodon
-        uses: cbrgm/mastodon-github-action@244bbe72e61b4490e2dc1c34f9537ae9299ae601 # v2.2.1
+        uses: cbrgm/mastodon-github-action@ac2d8e8c9986a17b824dd12dd9df4ce5fcd813c1 # v2.2.2
         with:
           access-token: ${{ secrets.MASTODON_ACCESS_TOKEN }}
           url: ${{ secrets.MASTODON_URL }}

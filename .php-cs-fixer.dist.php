@@ -24,9 +24,17 @@ $finder = PhpCsFixer\Finder::create()
     ->notName('TestAttributeOnHookMethodsTest.php')
     // InvokableConstraintAndPipeOperatorTest.php uses PHP 8.5 syntax
     ->notName('InvokableConstraintAndPipeOperatorTest.php')
+    // TestDoubleAndPartialFunctionApplicationTest.php uses PHP 8.6 syntax
+    ->notName('TestDoubleAndPartialFunctionApplicationTest.php')
+    // NoReturnTypeTest.php, RepeatAttributeWithoutReturnTypeTest.php, and RetryAttributeWithoutReturnTypeTest.php must have a method without a return type declaration
+    ->notPath('repeat/_files/NoReturnTypeTest.php')
+    ->notPath('repeat/_files/RepeatAttributeWithoutReturnTypeTest.php')
+    ->notPath('retry/_files/RetryAttributeWithoutReturnTypeTest.php')
     // FirstPartyClass.php and PhpDeprecationTest.php must not use declare(strict_types=1);
     ->notPath('error-handler/_files/php-deprecation/src/FirstPartyClass.php')
     ->notPath('error-handler/_files/php-deprecation/tests/PhpDeprecationTest.php')
+    // CannotBeParsed.php is intentionally not valid PHP
+    ->notPath('code-coverage/_files/parse-error/src/CannotBeParsed.php')
     ->notName('*.phpt');
 
 $config = new PhpCsFixer\Config;

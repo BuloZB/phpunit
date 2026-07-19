@@ -45,6 +45,10 @@ final readonly class TestMethodBuilder
             $testDox,
             MetadataRegistry::parser()->forClassAndMethod($testCase::class, $methodName),
             self::dataFor($testCase),
+            $testCase->repetition(),
+            $testCase->totalRepetitions(),
+            $testCase->attempt(),
+            $testCase->maxAttempts(),
         );
     }
 

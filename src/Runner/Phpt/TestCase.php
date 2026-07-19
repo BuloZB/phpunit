@@ -44,6 +44,7 @@ use PHPUnit\Event\Code\Phpt;
 use PHPUnit\Event\Code\ThrowableBuilder;
 use PHPUnit\Event\Facade as EventFacade;
 use PHPUnit\Event\NoPreviousThrowableException;
+use PHPUnit\Event\TestRunner\ChildProcessReason;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\AssertionFailedError;
 use PHPUnit\Framework\ExecutionOrderDependency;
@@ -87,11 +88,39 @@ final readonly class TestCase implements Reorderable, SelfDescribing, Test
     private string $filename;
 
     /**
-     * @param non-empty-string $filename
+     * @var positive-int
      */
-    public function __construct(string $filename)
+    private int $repetition;
+
+    /**
+     * @var positive-int
+     */
+    private int $totalRepetitions;
+
+    /**
+     * @var positive-int
+     */
+    private int $attempt;
+
+    /**
+     * @var positive-int
+     */
+    private int $maxAttempts;
+
+    /**
+     * @param non-empty-string $filename
+     * @param positive-int     $repetition
+     * @param positive-int     $totalRepetitions
+     * @param positive-int     $attempt
+     * @param positive-int     $maxAttempts
+     */
+    public function __construct(string $filename, int $repetition = 1, int $totalRepetitions = 1, int $attempt = 1, int $maxAttempts = 1)
     {
-        $this->filename = $filename;
+        $this->filename         = $filename;
+        $this->repetition       = $repetition;
+        $this->totalRepetitions = $totalRepetitions;
+        $this->attempt          = $attempt;
+        $this->maxAttempts      = $maxAttempts;
 
         $this->ensureCoverageFileDoesNotExist();
     }
@@ -209,6 +238,7 @@ final readonly class TestCase implements Reorderable, SelfDescribing, Test
         $jobResult = JobRunnerRegistry::run(
             new Job(
                 $code,
+                ChildProcessReason::PhptTest,
                 $this->stringifyIni($phpSettings),
                 $environmentVariables,
                 $arguments,
@@ -217,7 +247,7 @@ final readonly class TestCase implements Reorderable, SelfDescribing, Test
             ),
         );
 
-        EventFacade::emitter()->childProcessFinished($jobResult->stdout(), $jobResult->stderr());
+        EventFacade::emitter()->childProcessFinished(ChildProcessReason::PhptTest, $jobResult->stdout(), $jobResult->stderr());
 
         if (TestResultFacade::wasInterrupted()) {
             $this->runClean($sections, CodeCoverage::instance()->isActive());
@@ -375,7 +405,37 @@ final readonly class TestCase implements Reorderable, SelfDescribing, Test
      */
     public function valueObjectForEvents(): Phpt
     {
-        return new Phpt($this->filename);
+        return new Phpt(
+            $this->filename,
+            $this->repetition,
+            $this->totalRepetitions,
+            $this->attempt,
+            $this->maxAttempts,
+        );
+    }
+
+    /**
+     * @return positive-int
+     *
+     * @internal This method is not covered by the backward compatibility promise for PHPUnit
+     */
+    public function repetition(): int
+    {
+        return $this->repetition;
+    }
+
+    /**
+     * @internal This method is not covered by the backward compatibility promise for PHPUnit
+     */
+    public function markSkippedForRepeatAbort(int $failedRepetition): void
+    {
+        EventFacade::emitter()->testSkipped(
+            $this->valueObjectForEvents(),
+            sprintf(
+                'Remaining repetition skipped after failure in repetition %d',
+                $failedRepetition,
+            ),
+        );
     }
 
     /**
@@ -431,13 +491,14 @@ final readonly class TestCase implements Reorderable, SelfDescribing, Test
             $jobResult = JobRunnerRegistry::run(
                 new Job(
                     $skipIfCode,
+                    ChildProcessReason::PhptSkipIfSection,
                     $this->stringifyIni($settings),
                 ),
             );
 
             $output = $jobResult->stdout();
 
-            EventFacade::emitter()->childProcessFinished($output, $jobResult->stderr());
+            EventFacade::emitter()->childProcessFinished(ChildProcessReason::PhptSkipIfSection, $output, $jobResult->stderr());
         } else {
             $output = $this->runCodeInLocalSandbox($skipIfCode);
         }
@@ -548,13 +609,14 @@ final readonly class TestCase implements Reorderable, SelfDescribing, Test
             $jobResult = JobRunnerRegistry::run(
                 new Job(
                     $cleanCode,
+                    ChildProcessReason::PhptCleanSection,
                     $this->settings($collectCoverage),
                 ),
             );
 
             $output = $jobResult->stdout();
 
-            EventFacade::emitter()->childProcessFinished($jobResult->stdout(), $jobResult->stderr());
+            EventFacade::emitter()->childProcessFinished(ChildProcessReason::PhptCleanSection, $jobResult->stdout(), $jobResult->stderr());
         } else {
             $output = $this->runCodeInLocalSandbox($cleanCode);
         }
@@ -572,7 +634,7 @@ final readonly class TestCase implements Reorderable, SelfDescribing, Test
         /**
          * @phpstan-ignore staticMethod.internalClass
          */
-        $coverage = RawCodeCoverageData::fromXdebugWithoutPathCoverage([]);
+        $coverage = RawCodeCoverageData::fromLineCoverage([]);
         $files    = $this->coverageFiles();
 
         $buffer = false;

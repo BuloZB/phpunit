@@ -2,7 +2,7 @@
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
     <xs:annotation>
         <xs:documentation source="https://phpunit.de/documentation.html">
-            This Schema file defines the rules by which the XML configuration file of PHPUnit 13.2 may be structured.
+            This Schema file defines the rules by which the XML configuration file of PHPUnit 13.3 may be structured.
         </xs:documentation>
         <xs:appinfo source="https://phpunit.de/documentation.html"/>
     </xs:annotation>
@@ -25,6 +25,7 @@
             </xs:element>
             <xs:element name="deprecationTrigger" type="deprecationTriggerType" minOccurs="0"/>
             <xs:element name="issueTriggerResolvers" type="issueTriggerResolversType" minOccurs="0"/>
+            <xs:element name="deprecationFilters" type="deprecationFiltersType" minOccurs="0"/>
         </xs:all>
         <xs:attribute name="baseline" type="xs:anyURI"/>
         <xs:attribute name="restrictNotices" type="xs:boolean" default="false"/>
@@ -73,6 +74,7 @@
                 </xs:complexType>
             </xs:element>
         </xs:all>
+        <xs:attribute name="driver" type="xs:string"/>
         <xs:attribute name="pathCoverage" type="xs:boolean" default="false"/>
         <xs:attribute name="branchCoverage" type="xs:boolean" default="false"/>
         <xs:attribute name="includeUncoveredFiles" type="xs:boolean" default="true"/>
@@ -217,6 +219,9 @@
         <xs:attribute name="processIsolation" type="xs:boolean" default="false"/>
         <xs:attribute name="failOnAllIssues" type="xs:boolean" default="false"/>
         <xs:attribute name="failOnDeprecation" type="xs:boolean" default="false"/>
+        <xs:attribute name="failOnSelfDeprecation" type="xs:boolean" default="false"/>
+        <xs:attribute name="failOnDirectDeprecation" type="xs:boolean" default="false"/>
+        <xs:attribute name="failOnIndirectDeprecation" type="xs:boolean" default="false"/>
         <xs:attribute name="failOnPhpunitDeprecation" type="xs:boolean" default="false"/>
         <xs:attribute name="failOnPhpunitNotice" type="xs:boolean" default="false"/>
         <xs:attribute name="failOnPhpunitWarning" type="xs:boolean" default="true"/>
@@ -360,6 +365,8 @@
     </xs:complexType>
     <xs:complexType name="coverageReportHtmlType">
         <xs:attribute name="outputDirectory" type="xs:anyURI"/>
+        <xs:attribute name="classView" type="xs:boolean" default="true"/>
+        <xs:attribute name="fileView" type="xs:boolean" default="true"/>
         <xs:attribute name="lowUpperBound" type="xs:integer" default="50"/>
         <xs:attribute name="highLowerBound" type="xs:integer" default="90"/>
         <xs:attribute name="colorSuccessLow" type="xs:string" default="#d6e6f2"/>
@@ -377,7 +384,7 @@
         <xs:attribute name="colorSuccessBarDark" type="xs:string" default="#1560a0"/>
         <xs:attribute name="colorWarningDark" type="xs:string" default="#3d3010"/>
         <xs:attribute name="colorWarningBarDark" type="xs:string" default="#b88a00"/>
-        <xs:attribute name="colorDangerDark" type="xs:string" default="#4a2a10"/>
+        <xs:attribute name="colorDangerDark" type="xs:string" default="#371e09"/>
         <xs:attribute name="colorDangerBarDark" type="xs:string" default="#b54400"/>
         <xs:attribute name="colorBreadcrumbsDark" type="xs:string" default="var(--bs-gray-800)"/>
         <xs:attribute name="customCssFile" type="xs:string"/>
@@ -406,6 +413,14 @@
         </xs:sequence>
     </xs:complexType>
     <xs:complexType name="issueTriggerResolverType">
+        <xs:attribute name="className" type="xs:string" use="required"/>
+    </xs:complexType>
+    <xs:complexType name="deprecationFiltersType">
+        <xs:sequence>
+            <xs:element name="deprecationFilter" type="deprecationFilterType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+    <xs:complexType name="deprecationFilterType">
         <xs:attribute name="className" type="xs:string" use="required"/>
     </xs:complexType>
 </xs:schema>

@@ -151,6 +151,24 @@ final readonly class Merger
             $failOnDeprecation = $xmlConfiguration->phpunit()->failOnDeprecation();
         }
 
+        if ($cliConfiguration->hasFailOnSelfDeprecation()) {
+            $failOnSelfDeprecation = $cliConfiguration->failOnSelfDeprecation();
+        } else {
+            $failOnSelfDeprecation = $xmlConfiguration->phpunit()->failOnSelfDeprecation();
+        }
+
+        if ($cliConfiguration->hasFailOnDirectDeprecation()) {
+            $failOnDirectDeprecation = $cliConfiguration->failOnDirectDeprecation();
+        } else {
+            $failOnDirectDeprecation = $xmlConfiguration->phpunit()->failOnDirectDeprecation();
+        }
+
+        if ($cliConfiguration->hasFailOnIndirectDeprecation()) {
+            $failOnIndirectDeprecation = $cliConfiguration->failOnIndirectDeprecation();
+        } else {
+            $failOnIndirectDeprecation = $xmlConfiguration->phpunit()->failOnIndirectDeprecation();
+        }
+
         if ($cliConfiguration->hasFailOnPhpunitDeprecation()) {
             $failOnPhpunitDeprecation = $cliConfiguration->failOnPhpunitDeprecation();
         } else {
@@ -213,6 +231,24 @@ final readonly class Merger
             $doNotFailOnDeprecation = $cliConfiguration->doNotFailOnDeprecation();
         }
 
+        $doNotFailOnSelfDeprecation = false;
+
+        if ($cliConfiguration->hasDoNotFailOnSelfDeprecation()) {
+            $doNotFailOnSelfDeprecation = $cliConfiguration->doNotFailOnSelfDeprecation();
+        }
+
+        $doNotFailOnDirectDeprecation = false;
+
+        if ($cliConfiguration->hasDoNotFailOnDirectDeprecation()) {
+            $doNotFailOnDirectDeprecation = $cliConfiguration->doNotFailOnDirectDeprecation();
+        }
+
+        $doNotFailOnIndirectDeprecation = false;
+
+        if ($cliConfiguration->hasDoNotFailOnIndirectDeprecation()) {
+            $doNotFailOnIndirectDeprecation = $cliConfiguration->doNotFailOnIndirectDeprecation();
+        }
+
         $doNotFailOnPhpunitDeprecation = false;
 
         if ($cliConfiguration->hasDoNotFailOnPhpunitDeprecation()) {
@@ -265,6 +301,72 @@ final readonly class Merger
 
         if ($cliConfiguration->hasDoNotFailOnWarning()) {
             $doNotFailOnWarning = $cliConfiguration->doNotFailOnWarning();
+        }
+
+        if ($failOnAllIssues) {
+            if ($xmlConfiguration->phpunit()->hasFailOnDeprecation() && !$xmlConfiguration->phpunit()->failOnDeprecation()) {
+                $this->warnAboutFailOnSettingThatHasNoEffect('failOnDeprecation', 'failOnAllIssues', '--do-not-fail-on-deprecation');
+            }
+
+            if ($xmlConfiguration->phpunit()->hasFailOnSelfDeprecation() && !$xmlConfiguration->phpunit()->failOnSelfDeprecation()) {
+                $this->warnAboutFailOnSettingThatHasNoEffect('failOnSelfDeprecation', 'failOnAllIssues', '--do-not-fail-on-self-deprecation');
+            }
+
+            if ($xmlConfiguration->phpunit()->hasFailOnDirectDeprecation() && !$xmlConfiguration->phpunit()->failOnDirectDeprecation()) {
+                $this->warnAboutFailOnSettingThatHasNoEffect('failOnDirectDeprecation', 'failOnAllIssues', '--do-not-fail-on-direct-deprecation');
+            }
+
+            if ($xmlConfiguration->phpunit()->hasFailOnIndirectDeprecation() && !$xmlConfiguration->phpunit()->failOnIndirectDeprecation()) {
+                $this->warnAboutFailOnSettingThatHasNoEffect('failOnIndirectDeprecation', 'failOnAllIssues', '--do-not-fail-on-indirect-deprecation');
+            }
+
+            if ($xmlConfiguration->phpunit()->hasFailOnPhpunitDeprecation() && !$xmlConfiguration->phpunit()->failOnPhpunitDeprecation()) {
+                $this->warnAboutFailOnSettingThatHasNoEffect('failOnPhpunitDeprecation', 'failOnAllIssues', '--do-not-fail-on-phpunit-deprecation');
+            }
+
+            if ($xmlConfiguration->phpunit()->hasFailOnPhpunitNotice() && !$xmlConfiguration->phpunit()->failOnPhpunitNotice()) {
+                $this->warnAboutFailOnSettingThatHasNoEffect('failOnPhpunitNotice', 'failOnAllIssues', '--do-not-fail-on-phpunit-notice');
+            }
+
+            if ($xmlConfiguration->phpunit()->hasFailOnPhpunitWarning() && !$xmlConfiguration->phpunit()->failOnPhpunitWarning()) {
+                $this->warnAboutFailOnSettingThatHasNoEffect('failOnPhpunitWarning', 'failOnAllIssues', '--do-not-fail-on-phpunit-warning');
+            }
+
+            if ($xmlConfiguration->phpunit()->hasFailOnEmptyTestSuite() && !$xmlConfiguration->phpunit()->failOnEmptyTestSuite()) {
+                $this->warnAboutFailOnSettingThatHasNoEffect('failOnEmptyTestSuite', 'failOnAllIssues', '--do-not-fail-on-empty-test-suite');
+            }
+
+            if ($xmlConfiguration->phpunit()->hasFailOnIncomplete() && !$xmlConfiguration->phpunit()->failOnIncomplete()) {
+                $this->warnAboutFailOnSettingThatHasNoEffect('failOnIncomplete', 'failOnAllIssues', '--do-not-fail-on-incomplete');
+            }
+
+            if ($xmlConfiguration->phpunit()->hasFailOnNotice() && !$xmlConfiguration->phpunit()->failOnNotice()) {
+                $this->warnAboutFailOnSettingThatHasNoEffect('failOnNotice', 'failOnAllIssues', '--do-not-fail-on-notice');
+            }
+
+            if ($xmlConfiguration->phpunit()->hasFailOnRisky() && !$xmlConfiguration->phpunit()->failOnRisky()) {
+                $this->warnAboutFailOnSettingThatHasNoEffect('failOnRisky', 'failOnAllIssues', '--do-not-fail-on-risky');
+            }
+
+            if ($xmlConfiguration->phpunit()->hasFailOnSkipped() && !$xmlConfiguration->phpunit()->failOnSkipped()) {
+                $this->warnAboutFailOnSettingThatHasNoEffect('failOnSkipped', 'failOnAllIssues', '--do-not-fail-on-skipped');
+            }
+
+            if ($xmlConfiguration->phpunit()->hasFailOnWarning() && !$xmlConfiguration->phpunit()->failOnWarning()) {
+                $this->warnAboutFailOnSettingThatHasNoEffect('failOnWarning', 'failOnAllIssues', '--do-not-fail-on-warning');
+            }
+        } elseif ($failOnDeprecation && !$doNotFailOnDeprecation) {
+            if ($xmlConfiguration->phpunit()->hasFailOnSelfDeprecation() && !$xmlConfiguration->phpunit()->failOnSelfDeprecation()) {
+                $this->warnAboutFailOnSettingThatHasNoEffect('failOnSelfDeprecation', 'failOnDeprecation', '--do-not-fail-on-self-deprecation');
+            }
+
+            if ($xmlConfiguration->phpunit()->hasFailOnDirectDeprecation() && !$xmlConfiguration->phpunit()->failOnDirectDeprecation()) {
+                $this->warnAboutFailOnSettingThatHasNoEffect('failOnDirectDeprecation', 'failOnDeprecation', '--do-not-fail-on-direct-deprecation');
+            }
+
+            if ($xmlConfiguration->phpunit()->hasFailOnIndirectDeprecation() && !$xmlConfiguration->phpunit()->failOnIndirectDeprecation()) {
+                $this->warnAboutFailOnSettingThatHasNoEffect('failOnIndirectDeprecation', 'failOnDeprecation', '--do-not-fail-on-indirect-deprecation');
+            }
         }
 
         if ($cliConfiguration->hasStopOnDefect()) {
@@ -413,6 +515,12 @@ final readonly class Merger
             $branchCoverage = $xmlConfiguration->codeCoverage()->branchCoverage();
         }
 
+        $coverageDriver = null;
+
+        if ($xmlConfiguration->codeCoverage()->hasDriver()) {
+            $coverageDriver = $xmlConfiguration->codeCoverage()->driver();
+        }
+
         $defaultColors     = Colors::default();
         $defaultThresholds = Thresholds::default();
 
@@ -421,6 +529,8 @@ final readonly class Merger
         $coverageCrap4j                     = null;
         $coverageCrap4jThreshold            = 30;
         $coverageHtml                       = null;
+        $coverageHtmlClassView              = true;
+        $coverageHtmlFileView               = true;
         $coverageHtmlLowUpperBound          = $defaultThresholds->lowUpperBound();
         $coverageHtmlHighLowerBound         = $defaultThresholds->highLowerBound();
         $coverageHtmlColorSuccessLow        = $defaultColors->successLow();
@@ -514,6 +624,27 @@ final readonly class Merger
             $coverageHtml = $cliConfiguration->coverageHtml();
         } elseif ($coverageFromXmlConfiguration && $xmlConfiguration->codeCoverage()->hasHtml() && $xmlConfiguration->codeCoverage()->html()->hasTarget()) {
             $coverageHtml = $xmlConfiguration->codeCoverage()->html()->target()->path();
+        }
+
+        if ($cliConfiguration->hasWithoutClassView()) {
+            $coverageHtmlClassView = !$cliConfiguration->withoutClassView();
+        } elseif ($xmlConfiguration->codeCoverage()->hasHtml()) {
+            $coverageHtmlClassView = $xmlConfiguration->codeCoverage()->html()->classView();
+        }
+
+        if ($cliConfiguration->hasWithoutFileView()) {
+            $coverageHtmlFileView = !$cliConfiguration->withoutFileView();
+        } elseif ($xmlConfiguration->codeCoverage()->hasHtml()) {
+            $coverageHtmlFileView = $xmlConfiguration->codeCoverage()->html()->fileView();
+        }
+
+        if (!$coverageHtmlClassView && !$coverageHtmlFileView) {
+            EventFacade::emitter()->testRunnerTriggeredPhpunitWarning(
+                'The class view and the file view of the code coverage report in HTML format cannot both be disabled, rendering both',
+            );
+
+            $coverageHtmlClassView = true;
+            $coverageHtmlFileView  = true;
         }
 
         if ($cliConfiguration->hasCoverageOpenClover()) {
@@ -912,6 +1043,18 @@ final readonly class Merger
             $randomOrderSeed = time();
         }
 
+        $repeat = 1;
+
+        if ($cliConfiguration->hasRepeat()) {
+            $repeat = $cliConfiguration->repeat();
+        }
+
+        $retry = 1;
+
+        if ($cliConfiguration->hasRetry()) {
+            $retry = $cliConfiguration->retry();
+        }
+
         if ($xmlConfiguration->wasLoadedFromFile() && $xmlConfiguration->hasValidationErrors()) {
             if ((new SchemaDetector)->detect($xmlConfiguration->filename())->detected()) {
                 EventFacade::emitter()->testRunnerTriggeredPhpunitDeprecation(
@@ -1012,6 +1155,18 @@ final readonly class Merger
         }
 
         if ($failOnDeprecation && !$doNotFailOnDeprecation) {
+            $displayDetailsOnTestsThatTriggerDeprecations = true;
+        }
+
+        if ($failOnSelfDeprecation && !$doNotFailOnSelfDeprecation) {
+            $displayDetailsOnTestsThatTriggerDeprecations = true;
+        }
+
+        if ($failOnDirectDeprecation && !$doNotFailOnDirectDeprecation) {
+            $displayDetailsOnTestsThatTriggerDeprecations = true;
+        }
+
+        if ($failOnIndirectDeprecation && !$doNotFailOnIndirectDeprecation) {
             $displayDetailsOnTestsThatTriggerDeprecations = true;
         }
 
@@ -1150,6 +1305,7 @@ final readonly class Merger
                 $xmlConfiguration->source()->ignoreIndirectDeprecations(),
                 $xmlConfiguration->source()->identifyIssueTrigger(),
                 $xmlConfiguration->source()->issueTriggerResolvers(),
+                $xmlConfiguration->source()->deprecationFilters(),
             ),
             $testResultCacheFile,
             $coverageClover,
@@ -1157,6 +1313,8 @@ final readonly class Merger
             $coverageCrap4j,
             $coverageCrap4jThreshold,
             $coverageHtml,
+            $coverageHtmlClassView,
+            $coverageHtmlFileView,
             $coverageHtmlLowUpperBound,
             $coverageHtmlHighLowerBound,
             $coverageHtmlColorSuccessLow,
@@ -1187,11 +1345,15 @@ final readonly class Merger
             $coverageXmlIncludeSource,
             $pathCoverage,
             $branchCoverage,
+            $coverageDriver,
             $xmlConfiguration->codeCoverage()->ignoreDeprecatedCodeUnits(),
             $disableCodeCoverageIgnore,
             $disableCoverageTargeting,
             $failOnAllIssues,
             $failOnDeprecation,
+            $failOnSelfDeprecation,
+            $failOnDirectDeprecation,
+            $failOnIndirectDeprecation,
             $failOnPhpunitDeprecation,
             $failOnPhpunitNotice,
             $failOnPhpunitWarning,
@@ -1202,6 +1364,9 @@ final readonly class Merger
             $failOnSkipped,
             $failOnWarning,
             $doNotFailOnDeprecation,
+            $doNotFailOnSelfDeprecation,
+            $doNotFailOnDirectDeprecation,
+            $doNotFailOnIndirectDeprecation,
             $doNotFailOnPhpunitDeprecation,
             $doNotFailOnPhpunitNotice,
             $doNotFailOnPhpunitWarning,
@@ -1282,6 +1447,8 @@ final readonly class Merger
             $groups,
             $excludeGroups,
             $randomOrderSeed,
+            $repeat,
+            $retry,
             $includeUncoveredFiles,
             $xmlConfiguration->testSuite(),
             $includeTestSuite,
@@ -1388,5 +1555,22 @@ final readonly class Merger
         }
 
         return false;
+    }
+
+    /**
+     * @param non-empty-string $attribute
+     * @param non-empty-string $enablingSetting
+     * @param non-empty-string $cliOption
+     */
+    private function warnAboutFailOnSettingThatHasNoEffect(string $attribute, string $enablingSetting, string $cliOption): void
+    {
+        EventFacade::emitter()->testRunnerTriggeredPhpunitWarning(
+            sprintf(
+                '%s="false" has no effect because %s is enabled. Use the %s CLI option instead',
+                $attribute,
+                $enablingSetting,
+                $cliOption,
+            ),
+        );
     }
 }

@@ -242,6 +242,18 @@ final class LoaderTest extends TestCase
         );
     }
 
+    public function testDeprecationFiltersAreReadCorrectlyAndEmptyClassNamesAreIgnored(): void
+    {
+        $source = $this->configuration('configuration_deprecation_filters.xml')->source();
+
+        $this->assertSame(
+            [
+                'PHPUnit\TestFixture\DeprecationFilter\FilterA',
+            ],
+            $source->deprecationFilters(),
+        );
+    }
+
     public function testBranchCoverageConfigurationIsReadCorrectly(): void
     {
         $codeCoverage = $this->configuration('configuration_codecoverage_branchcoverage.xml')->codeCoverage();
@@ -249,10 +261,29 @@ final class LoaderTest extends TestCase
         $this->assertTrue($codeCoverage->branchCoverage());
     }
 
+    public function testClassViewForHtmlCodeCoverageReportCanBeDisabled(): void
+    {
+        $codeCoverage = $this->configuration('configuration_codecoverage_html_classview.xml')->codeCoverage();
+
+        $this->assertTrue($codeCoverage->hasHtml());
+        $this->assertFalse($codeCoverage->html()->classView());
+        $this->assertTrue($codeCoverage->html()->fileView());
+    }
+
+    public function testFileViewForHtmlCodeCoverageReportCanBeDisabled(): void
+    {
+        $codeCoverage = $this->configuration('configuration_codecoverage_html_fileview.xml')->codeCoverage();
+
+        $this->assertTrue($codeCoverage->hasHtml());
+        $this->assertTrue($codeCoverage->html()->classView());
+        $this->assertFalse($codeCoverage->html()->fileView());
+    }
+
     public function testCodeCoverageConfigurationIsReadCorrectly(): void
     {
         $codeCoverage = $this->configuration('configuration_codecoverage.xml')->codeCoverage();
 
+        $this->assertFalse($codeCoverage->hasDriver());
         $this->assertTrue($codeCoverage->pathCoverage());
         $this->assertTrue($codeCoverage->includeUncoveredFiles());
         $this->assertTrue($codeCoverage->ignoreDeprecatedCodeUnits());
@@ -275,6 +306,8 @@ final class LoaderTest extends TestCase
 
         $this->assertTrue($codeCoverage->hasHtml());
         $this->assertSame(TEST_FILES_PATH . 'coverage', $codeCoverage->html()->target()->path());
+        $this->assertTrue($codeCoverage->html()->classView());
+        $this->assertTrue($codeCoverage->html()->fileView());
         $this->assertSame($defaultThresholds->lowUpperBound(), $codeCoverage->html()->lowUpperBound());
         $this->assertSame($defaultThresholds->highLowerBound(), $codeCoverage->html()->highLowerBound());
         $this->assertSame($defaultColors->successLow(), $codeCoverage->html()->colorSuccessLow());
@@ -307,6 +340,26 @@ final class LoaderTest extends TestCase
 
         $this->assertTrue($codeCoverage->hasXml());
         $this->assertSame(TEST_FILES_PATH . 'coverage', $codeCoverage->xml()->target()->path());
+    }
+
+    public function testCodeCoverageDriverConfigurationIsReadCorrectly(): void
+    {
+        $codeCoverage = $this->configuration('configuration_codecoverage_driver.xml')->codeCoverage();
+
+        $this->assertTrue($codeCoverage->hasDriver());
+        $this->assertSame('My\Custom\Driver', $codeCoverage->driver());
+    }
+
+    public function testCodeCoverageDriverAccessorThrowsWhenNotConfigured(): void
+    {
+        $codeCoverage = $this->configuration('configuration_codecoverage.xml')->codeCoverage();
+
+        $this->assertFalse($codeCoverage->hasDriver());
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Code Coverage driver has not been configured');
+
+        $codeCoverage->driver();
     }
 
     public function testGroupConfigurationIsReadCorrectly(): void

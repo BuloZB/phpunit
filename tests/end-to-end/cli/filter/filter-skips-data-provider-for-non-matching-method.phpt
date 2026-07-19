@@ -1,12 +1,12 @@
 --TEST--
-phpunit --filter testA does not invoke data providers for non-matching methods
+phpunit --filter testA#0-1 does not invoke data providers for non-matching methods
 --FILE--
 <?php declare(strict_types=1);
 $_SERVER['argv'][] = '--do-not-cache-result';
 $_SERVER['argv'][] = '--no-configuration';
 $_SERVER['argv'][] = '--debug';
 $_SERVER['argv'][] = '--filter';
-$_SERVER['argv'][] = 'testA';
+$_SERVER['argv'][] = 'testA#0-1';
 $_SERVER['argv'][] = __DIR__ . '/../../_files/DataProviderSkipWhenFilteredTest.php';
 
 require_once __DIR__ . '/../../../bootstrap.php';
@@ -25,7 +25,7 @@ Test Suite Sorted
 Test Suite Filtered (2 tests)
 Test Runner Execution Started (2 tests)
 Test Suite Started (PHPUnit\TestFixture\DataProviderSkipWhenFilteredTest, 2 tests)
-Test Suite Started (PHPUnit\TestFixture\DataProviderSkipWhenFilteredTest::testA, 2 tests)
+Test Suite for Test Method with Data Provider Started (PHPUnit\TestFixture\DataProviderSkipWhenFilteredTest::testA, 2 data sets)
 Test Preparation Started (PHPUnit\TestFixture\DataProviderSkipWhenFilteredTest::testA#0)
 Test Prepared (PHPUnit\TestFixture\DataProviderSkipWhenFilteredTest::testA#0)
 Test Passed (PHPUnit\TestFixture\DataProviderSkipWhenFilteredTest::testA#0)
@@ -34,7 +34,7 @@ Test Preparation Started (PHPUnit\TestFixture\DataProviderSkipWhenFilteredTest::
 Test Prepared (PHPUnit\TestFixture\DataProviderSkipWhenFilteredTest::testA#1)
 Test Passed (PHPUnit\TestFixture\DataProviderSkipWhenFilteredTest::testA#1)
 Test Finished (PHPUnit\TestFixture\DataProviderSkipWhenFilteredTest::testA#1)
-Test Suite Finished (PHPUnit\TestFixture\DataProviderSkipWhenFilteredTest::testA, 2 tests)
+Test Suite for Test Method with Data Provider Finished (PHPUnit\TestFixture\DataProviderSkipWhenFilteredTest::testA, 2 data sets)
 Test Suite Finished (PHPUnit\TestFixture\DataProviderSkipWhenFilteredTest, 2 tests)
 Test Runner Execution Finished
 Test Runner Finished

@@ -19,6 +19,9 @@ use PHPUnit\Framework\Attributes\BeforeClass;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\CoversClassesThatExtendClass;
 use PHPUnit\Framework\Attributes\CoversClassesThatImplementInterface;
+use PHPUnit\Framework\Attributes\CoversDirectory;
+use PHPUnit\Framework\Attributes\CoversDirectoryRecursively;
+use PHPUnit\Framework\Attributes\CoversFile;
 use PHPUnit\Framework\Attributes\CoversFunction;
 use PHPUnit\Framework\Attributes\CoversMethod;
 use PHPUnit\Framework\Attributes\CoversNamespace;
@@ -68,6 +71,9 @@ use PHPUnit\Framework\Attributes\Ticket;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\Attributes\UsesClassesThatExtendClass;
 use PHPUnit\Framework\Attributes\UsesClassesThatImplementInterface;
+use PHPUnit\Framework\Attributes\UsesDirectory;
+use PHPUnit\Framework\Attributes\UsesDirectoryRecursively;
+use PHPUnit\Framework\Attributes\UsesFile;
 use PHPUnit\Framework\Attributes\UsesFunction;
 use PHPUnit\Framework\Attributes\UsesMethod;
 use PHPUnit\Framework\Attributes\UsesNamespace;
@@ -75,7 +81,7 @@ use PHPUnit\Framework\Attributes\UsesTrait;
 use PHPUnit\Framework\Attributes\WithEnvironmentVariable;
 use PHPUnit\Framework\Attributes\WithoutErrorHandler;
 use PHPUnit\Metadata\DisableReturnValueGenerationForTestDoubles;
-use PHPUnit\Metadata\InvalidAttributeException;
+use PHPUnit\Metadata\InvalidAttribute;
 
 #[CoversClass(AttributeParser::class)]
 #[CoversClass(AllowMockObjectsWithoutExpectations::class)]
@@ -88,6 +94,9 @@ use PHPUnit\Metadata\InvalidAttributeException;
 #[CoversClass(CoversClass::class)]
 #[CoversClass(CoversClassesThatExtendClass::class)]
 #[CoversClass(CoversClassesThatImplementInterface::class)]
+#[CoversClass(CoversDirectory::class)]
+#[CoversClass(CoversDirectoryRecursively::class)]
+#[CoversClass(CoversFile::class)]
 #[CoversClass(CoversFunction::class)]
 #[CoversClass(CoversMethod::class)]
 #[CoversClass(CoversNamespace::class)]
@@ -109,7 +118,7 @@ use PHPUnit\Metadata\InvalidAttributeException;
 #[CoversClass(ExcludeGlobalVariableFromBackup::class)]
 #[CoversClass(ExcludeStaticPropertyFromBackup::class)]
 #[CoversClass(Group::class)]
-#[CoversClass(InvalidAttributeException::class)]
+#[CoversClass(InvalidAttribute::class)]
 #[CoversClass(Large::class)]
 #[CoversClass(Medium::class)]
 #[CoversClass(PostCondition::class)]
@@ -138,6 +147,9 @@ use PHPUnit\Metadata\InvalidAttributeException;
 #[CoversClass(UsesClass::class)]
 #[CoversClass(UsesClassesThatExtendClass::class)]
 #[CoversClass(UsesClassesThatImplementInterface::class)]
+#[CoversClass(UsesDirectory::class)]
+#[CoversClass(UsesDirectoryRecursively::class)]
+#[CoversClass(UsesFile::class)]
 #[CoversClass(UsesFunction::class)]
 #[CoversClass(UsesMethod::class)]
 #[CoversClass(UsesNamespace::class)]

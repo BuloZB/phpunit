@@ -408,6 +408,23 @@ final readonly class Loader
             $issueTriggerResolvers[] = $className;
         }
 
+        $deprecationFilters     = [];
+        $deprecationFilterNodes = $xpath->query('source/deprecationFilters/deprecationFilter');
+
+        assert($deprecationFilterNodes instanceof DOMNodeList);
+
+        foreach ($deprecationFilterNodes as $node) {
+            assert($node instanceof DOMElement);
+
+            $className = $node->getAttribute('className');
+
+            if ($className === '') {
+                continue;
+            }
+
+            $deprecationFilters[] = $className;
+        }
+
         return new Source(
             $baseline,
             false,
@@ -430,11 +447,13 @@ final readonly class Loader
             $ignoreIndirectDeprecations,
             $identifyIssueTrigger,
             $issueTriggerResolvers,
+            $deprecationFilters,
         );
     }
 
     private function codeCoverage(string $filename, DOMXPath $xpath): CodeCoverage
     {
+        $driver                    = null;
         $pathCoverage              = false;
         $branchCoverage            = false;
         $includeUncoveredFiles     = true;
@@ -444,6 +463,8 @@ final readonly class Loader
         $element = $this->element($xpath, 'coverage');
 
         if ($element !== null) {
+            $driver = $this->parseStringAttribute($element, 'driver');
+
             $pathCoverage = $this->parseBooleanAttribute(
                 $element,
                 'pathCoverage',
@@ -537,6 +558,8 @@ final readonly class Loader
 
             $html = new CodeCoverageHtml(
                 $outputDirectory,
+                $this->parseBooleanAttribute($element, 'classView', true),
+                $this->parseBooleanAttribute($element, 'fileView', true),
                 $this->parseNonNegativeIntegerAttribute($element, 'lowUpperBound', max(0, $defaultThresholds->lowUpperBound())),
                 $this->parseNonNegativeIntegerAttribute($element, 'highLowerBound', max(0, $defaultThresholds->highLowerBound())),
                 $this->parseColorAttributeWithDefault($element, 'colorSuccessLow', $defaultColors->successLow()),
@@ -621,6 +644,7 @@ final readonly class Loader
         }
 
         return new CodeCoverage(
+            $driver,
             $pathCoverage,
             $branchCoverage,
             $includeUncoveredFiles,
@@ -1210,16 +1234,31 @@ final readonly class Loader
             $this->parseBooleanAttribute($documentElement, 'processIsolation', false),
             $this->parseBooleanAttribute($documentElement, 'failOnAllIssues', false),
             $this->parseBooleanAttribute($documentElement, 'failOnDeprecation', false),
+            $documentElement->hasAttribute('failOnDeprecation'),
+            $this->parseBooleanAttribute($documentElement, 'failOnSelfDeprecation', false),
+            $documentElement->hasAttribute('failOnSelfDeprecation'),
+            $this->parseBooleanAttribute($documentElement, 'failOnDirectDeprecation', false),
+            $documentElement->hasAttribute('failOnDirectDeprecation'),
+            $this->parseBooleanAttribute($documentElement, 'failOnIndirectDeprecation', false),
+            $documentElement->hasAttribute('failOnIndirectDeprecation'),
             $this->parseBooleanAttribute($documentElement, 'failOnPhpunitDeprecation', false),
+            $documentElement->hasAttribute('failOnPhpunitDeprecation'),
             $this->parseBooleanAttribute($documentElement, 'failOnPhpunitNotice', false),
+            $documentElement->hasAttribute('failOnPhpunitNotice'),
             $this->parseBooleanAttribute($documentElement, 'failOnPhpunitWarning', true),
+            $documentElement->hasAttribute('failOnPhpunitWarning'),
             $this->parseBooleanAttribute($documentElement, 'failOnEmptyTestSuite', false),
             $documentElement->hasAttribute('failOnEmptyTestSuite'),
             $this->parseBooleanAttribute($documentElement, 'failOnIncomplete', false),
+            $documentElement->hasAttribute('failOnIncomplete'),
             $this->parseBooleanAttribute($documentElement, 'failOnNotice', false),
+            $documentElement->hasAttribute('failOnNotice'),
             $this->parseBooleanAttribute($documentElement, 'failOnRisky', false),
+            $documentElement->hasAttribute('failOnRisky'),
             $this->parseBooleanAttribute($documentElement, 'failOnSkipped', false),
+            $documentElement->hasAttribute('failOnSkipped'),
             $this->parseBooleanAttribute($documentElement, 'failOnWarning', false),
+            $documentElement->hasAttribute('failOnWarning'),
             (int) $this->parseBooleanAttribute($documentElement, 'stopOnDefect', false),
             (int) $this->parseBooleanAttribute($documentElement, 'stopOnDeprecation', false),
             (int) $this->parseBooleanAttribute($documentElement, 'stopOnError', false),

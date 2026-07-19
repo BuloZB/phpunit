@@ -23,6 +23,7 @@ use PHPUnit\Event\TestRunner\ChildProcessErrored;
 use PHPUnit\Event\TestRunner\ChildProcessErroredSubscriber;
 use PHPUnit\Event\TestRunner\ChildProcessFinished;
 use PHPUnit\Event\TestRunner\ChildProcessFinishedSubscriber;
+use PHPUnit\Event\TestRunner\ChildProcessReason;
 use PHPUnit\Event\TestRunner\ChildProcessStarted;
 use PHPUnit\Event\TestRunner\ChildProcessStartedSubscriber;
 use PHPUnit\Event\TestRunner\DeprecationTriggered as TestRunnerDeprecationTriggered;
@@ -688,10 +689,16 @@ final class DispatchingEmitterTest extends Framework\TestCase
             $telemetrySystem,
         );
 
-        $emitter->childProcessStarted();
+        $reason = ChildProcessReason::TestRequiringProcessIsolation;
+
+        $emitter->childProcessStarted($reason);
 
         $this->assertSame(1, $subscriber->recordedEventCount());
-        $this->assertInstanceOf(ChildProcessStarted::class, $subscriber->lastRecordedEvent());
+
+        $event = $subscriber->lastRecordedEvent();
+
+        $this->assertInstanceOf(ChildProcessStarted::class, $event);
+        $this->assertSame($reason, $event->reason());
     }
 
     #[TestDox('childProcessErrored() emits TestRunner\ChildProcessErrored event')]
@@ -718,10 +725,18 @@ final class DispatchingEmitterTest extends Framework\TestCase
             $telemetrySystem,
         );
 
-        $emitter->childProcessErrored();
+        $reason  = ChildProcessReason::TestRequiringProcessIsolation;
+        $message = 'message';
+
+        $emitter->childProcessErrored($reason, $message);
 
         $this->assertSame(1, $subscriber->recordedEventCount());
-        $this->assertInstanceOf(ChildProcessErrored::class, $subscriber->lastRecordedEvent());
+
+        $event = $subscriber->lastRecordedEvent();
+
+        $this->assertInstanceOf(ChildProcessErrored::class, $event);
+        $this->assertSame($reason, $event->reason());
+        $this->assertSame($message, $event->message());
     }
 
     #[TestDox('childProcessFinished() emits TestRunner\ChildProcessFinished event')]
@@ -748,16 +763,18 @@ final class DispatchingEmitterTest extends Framework\TestCase
             $telemetrySystem,
         );
 
+        $reason = ChildProcessReason::PhptTest;
         $stdout = 'stdout';
         $stderr = 'stderr';
 
-        $emitter->childProcessFinished($stdout, $stderr);
+        $emitter->childProcessFinished($reason, $stdout, $stderr);
 
         $this->assertSame(1, $subscriber->recordedEventCount());
 
         $event = $subscriber->lastRecordedEvent();
 
         $this->assertInstanceOf(ChildProcessFinished::class, $event);
+        $this->assertSame($reason, $event->reason());
         $this->assertSame($stdout, $event->stdout());
         $this->assertSame($stderr, $event->stderr());
     }
@@ -2137,6 +2154,7 @@ final class DispatchingEmitterTest extends Framework\TestCase
         $suppressed        = false;
         $ignoredByBaseline = false;
         $ignoredByTest     = false;
+        $ignoredByFilter   = false;
         $trigger           = IssueTrigger::from(null, null);
 
         $emitter->testTriggeredPhpDeprecation(
@@ -2147,6 +2165,7 @@ final class DispatchingEmitterTest extends Framework\TestCase
             $suppressed,
             $ignoredByBaseline,
             $ignoredByTest,
+            $ignoredByFilter,
             $trigger,
         );
 
@@ -2162,6 +2181,7 @@ final class DispatchingEmitterTest extends Framework\TestCase
         $this->assertSame($suppressed, $event->wasSuppressed());
         $this->assertSame($ignoredByBaseline, $event->ignoredByBaseline());
         $this->assertSame($ignoredByTest, $event->ignoredByTest());
+        $this->assertSame($ignoredByFilter, $event->ignoredByFilter());
         $this->assertSame($trigger, $event->trigger());
     }
 
@@ -2196,6 +2216,7 @@ final class DispatchingEmitterTest extends Framework\TestCase
         $suppressed        = false;
         $ignoredByBaseline = false;
         $ignoredByTest     = false;
+        $ignoredByFilter   = false;
         $trigger           = IssueTrigger::from(null, null);
         $stackTrace        = 'stack-trace';
 
@@ -2207,6 +2228,7 @@ final class DispatchingEmitterTest extends Framework\TestCase
             $suppressed,
             $ignoredByBaseline,
             $ignoredByTest,
+            $ignoredByFilter,
             $trigger,
             $stackTrace,
         );
@@ -2223,6 +2245,7 @@ final class DispatchingEmitterTest extends Framework\TestCase
         $this->assertSame($suppressed, $event->wasSuppressed());
         $this->assertSame($ignoredByBaseline, $event->ignoredByBaseline());
         $this->assertSame($ignoredByTest, $event->ignoredByTest());
+        $this->assertSame($ignoredByFilter, $event->ignoredByFilter());
         $this->assertSame($trigger, $event->trigger());
         $this->assertSame($stackTrace, $event->stackTrace());
     }
@@ -3536,7 +3559,7 @@ final class DispatchingEmitterTest extends Framework\TestCase
 
         $trigger = IssueTrigger::from(null, null);
 
-        $emitter->testRunnerTriggeredPhpDeprecation('message', 'file', 1, false, false, $trigger);
+        $emitter->testRunnerTriggeredPhpDeprecation('message', 'file', 1, false, false, false, $trigger);
 
         $this->assertSame(1, $subscriber->recordedEventCount());
 
@@ -3548,6 +3571,7 @@ final class DispatchingEmitterTest extends Framework\TestCase
         $this->assertSame(1, $event->line());
         $this->assertFalse($event->wasSuppressed());
         $this->assertFalse($event->ignoredByBaseline());
+        $this->assertFalse($event->ignoredByFilter());
         $this->assertSame($trigger, $event->trigger());
     }
 
@@ -3577,7 +3601,7 @@ final class DispatchingEmitterTest extends Framework\TestCase
 
         $trigger = IssueTrigger::from(null, null);
 
-        $emitter->testRunnerTriggeredDeprecation('message', 'file', 1, false, false, $trigger, 'stack trace');
+        $emitter->testRunnerTriggeredDeprecation('message', 'file', 1, false, false, false, $trigger, 'stack trace');
 
         $this->assertSame(1, $subscriber->recordedEventCount());
 
@@ -3589,6 +3613,7 @@ final class DispatchingEmitterTest extends Framework\TestCase
         $this->assertSame(1, $event->line());
         $this->assertFalse($event->wasSuppressed());
         $this->assertFalse($event->ignoredByBaseline());
+        $this->assertFalse($event->ignoredByFilter());
         $this->assertSame($trigger, $event->trigger());
         $this->assertSame('stack trace', $event->stackTrace());
     }

@@ -36,12 +36,14 @@ final readonly class TestSuiteMapper
      * @param non-empty-string       $xmlConfigurationFile
      * @param list<non-empty-string> $includeTestSuites
      * @param list<non-empty-string> $excludeTestSuites
+     * @param positive-int           $numberOfRuns
+     * @param positive-int           $maxAttempts
      *
      * @throws RuntimeException
      * @throws TestDirectoryNotFoundException
      * @throws TestFileNotFoundException
      */
-    public function map(string $xmlConfigurationFile, TestSuiteCollection $configuredTestSuites, array $includeTestSuites, array $excludeTestSuites): TestSuiteObject
+    public function map(string $xmlConfigurationFile, TestSuiteCollection $configuredTestSuites, array $includeTestSuites, array $excludeTestSuites, int $numberOfRuns = 1, int $maxAttempts = 1): TestSuiteObject
     {
         try {
             $result    = TestSuiteObject::empty($xmlConfigurationFile);
@@ -101,7 +103,7 @@ final readonly class TestSuiteMapper
                         $processed[$file] = $testSuiteName;
                         $empty            = false;
 
-                        $testSuite->addTestFile($file, $groups);
+                        $testSuite->addTestFile($file, $groups, $numberOfRuns, $maxAttempts);
                     }
                 }
 
@@ -130,7 +132,7 @@ final readonly class TestSuiteMapper
                     $processed[$file->path()] = $testSuiteName;
                     $empty                    = false;
 
-                    $testSuite->addTestFile($file->path(), $file->groups());
+                    $testSuite->addTestFile($file->path(), $file->groups(), $numberOfRuns, $maxAttempts);
                 }
 
                 if (!$empty) {
