@@ -67,9 +67,18 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
     private string $name;
 
     /**
-     * @var array<non-empty-string, list<non-empty-string>>
+     * The name of a group that is a number is an integer key.
+     *
+     * @var array<int|non-empty-string, list<PhptTestCase|TestCase>>
      */
-    private array $groups = [];
+    private array $groupedTests = [];
+
+    /**
+     * The name of a group that is a number is an integer key.
+     *
+     * @var ?array<int|non-empty-string, list<non-empty-string>>
+     */
+    private ?array $groups = null;
 
     /**
      * @var ?list<ExecutionOrderDependency>
@@ -172,18 +181,14 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
         }
 
         if ($test instanceof TestCase) {
-            $id = $test->valueObjectForEvents()->id();
-
             $test->setGroups($groups);
-        } else {
-            $id = $test->valueObjectForEvents()->id();
         }
 
         foreach ($groups as $group) {
-            if (!isset($this->groups[$group])) {
-                $this->groups[$group] = [$id];
+            if (!isset($this->groupedTests[$group])) {
+                $this->groupedTests[$group] = [$test];
             } else {
-                $this->groups[$group][] = $id;
+                $this->groupedTests[$group][] = $test;
             }
         }
     }
@@ -324,10 +329,30 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
     }
 
     /**
-     * @return array<non-empty-string, list<non-empty-string>>
+     * The identifiers of the tests are only determined when they are asked
+     * for, which is only the case when tests are filtered by group. A test
+     * that is run builds the event value object that provides its identifier
+     * anyway, and caches it, so determining the identifiers eagerly only adds
+     * work for tests that are never run.
+     *
+     * The name of a group that is a number is an integer key.
+     *
+     * @return array<int|non-empty-string, list<non-empty-string>>
      */
     public function groups(): array
     {
+        if ($this->groups !== null) {
+            return $this->groups;
+        }
+
+        $this->groups = [];
+
+        foreach ($this->groupedTests as $group => $tests) {
+            foreach ($tests as $test) {
+                $this->groups[$group][] = $test->valueObjectForEvents()->id();
+            }
+        }
+
         return $this->groups;
     }
 
@@ -463,8 +488,20 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
         if ($this->providedTests === null) {
             $this->providedTests = [];
 
+            /**
+             * The targets that were provided so far are tracked separately so
+             * that adding a test to the result is not more expensive for the
+             * last test of a large test suite than it is for the first one.
+             *
+             * @var array<string, true> $targets
+             */
+            $targets = [];
+
             if (is_callable($this->sortId(), true)) {
-                $this->providedTests[] = new ExecutionOrderDependency($this->sortId());
+                $dependency = new ExecutionOrderDependency($this->sortId());
+
+                $this->providedTests[]             = $dependency;
+                $targets[$dependency->getTarget()] = true;
             }
 
             foreach ($this->tests as $test) {
@@ -474,7 +511,16 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
                     // @codeCoverageIgnoreEnd
                 }
 
-                $this->providedTests = ExecutionOrderDependency::mergeUnique($this->providedTests, $test->provides());
+                foreach ($test->provides() as $dependency) {
+                    $target = $dependency->getTarget();
+
+                    if (isset($targets[$target])) {
+                        continue;
+                    }
+
+                    $targets[$target]      = true;
+                    $this->providedTests[] = $dependency;
+                }
             }
         }
 
@@ -489,6 +535,22 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
         if ($this->requiredTests === null) {
             $this->requiredTests = [];
 
+            /**
+             * @see provides()
+             *
+             * @var array<string, true> $targets
+             */
+            $targets = [];
+
+            /**
+             * A dependency that does not name both a class and a method is
+             * dropped as soon as another test contributes its dependencies,
+             * so only the one of the test that contributes last is kept.
+             *
+             * @var list<ExecutionOrderDependency> $invalid
+             */
+            $invalid = [];
+
             foreach ($this->tests as $test) {
                 if (!$test instanceof Reorderable) {
                     // @codeCoverageIgnoreStart
@@ -496,13 +558,32 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
                     // @codeCoverageIgnoreEnd
                 }
 
-                $this->requiredTests = ExecutionOrderDependency::mergeUnique(
-                    ExecutionOrderDependency::filterInvalid($this->requiredTests),
-                    $test->requires(),
-                );
+                $invalid = [];
+
+                foreach ($test->requires() as $dependency) {
+                    $target = $dependency->getTarget();
+
+                    if ($target === '') {
+                        if ($invalid === []) {
+                            $invalid[] = $dependency;
+                        }
+
+                        continue;
+                    }
+
+                    if (isset($targets[$target])) {
+                        continue;
+                    }
+
+                    $targets[$target]      = true;
+                    $this->requiredTests[] = $dependency;
+                }
             }
 
-            $this->requiredTests = ExecutionOrderDependency::diff($this->requiredTests, $this->provides());
+            $this->requiredTests = ExecutionOrderDependency::diff(
+                array_merge($this->requiredTests, $invalid),
+                $this->provides(),
+            );
         }
 
         return $this->requiredTests;
@@ -663,8 +744,9 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
             $tests[] = $test;
         }
 
-        $this->tests  = [];
-        $this->groups = [];
+        $this->tests        = [];
+        $this->groupedTests = [];
+        $this->groups       = null;
 
         return $tests;
     }
@@ -690,6 +772,7 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
 
     private function clearCaches(): void
     {
+        $this->groups        = null;
         $this->providedTests = null;
         $this->requiredTests = null;
     }
@@ -700,16 +783,6 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
     private function containsOnlyVirtualGroups(array $groups): bool
     {
         return array_all($groups, static fn (string $group) => str_starts_with($group, '__phpunit_'));
-    }
-
-    private function methodDoesNotExistOrIsDeclaredInTestCase(string $methodName): bool
-    {
-        /** @var class-string $className */
-        $className = $this->name;
-        $reflector = new ReflectionClass($className);
-
-        return !$reflector->hasMethod($methodName) ||
-               $reflector->getMethod($methodName)->getDeclaringClass()->getName() === TestCase::class;
     }
 
     /**
@@ -741,12 +814,13 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
         }
 
         $methods         = (new HookMethods)->hookMethods($this->name)['beforeClass']->methodNamesSortedByPriority();
+        $reflector       = new ReflectionClass($this->name);
         $calledMethods   = [];
         $emitCalledEvent = true;
         $result          = true;
 
         foreach ($methods as $method) {
-            if ($this->methodDoesNotExistOrIsDeclaredInTestCase($method)) {
+            if (Reflection::methodDoesNotExistOrIsDeclaredInTestCase($reflector, $method)) {
                 continue;
             }
 
@@ -832,10 +906,11 @@ class TestSuite implements IteratorAggregate, Reorderable, Test
         }
 
         $methods       = (new HookMethods)->hookMethods($this->name)['afterClass']->methodNamesSortedByPriority();
+        $reflector     = new ReflectionClass($this->name);
         $calledMethods = [];
 
         foreach ($methods as $method) {
-            if ($this->methodDoesNotExistOrIsDeclaredInTestCase($method)) {
+            if (Reflection::methodDoesNotExistOrIsDeclaredInTestCase($reflector, $method)) {
                 continue;
             }
 

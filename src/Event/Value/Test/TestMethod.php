@@ -13,6 +13,7 @@ use function is_int;
 use function sprintf;
 use PHPUnit\Event\TestData\TestDataCollection;
 use PHPUnit\Metadata\MetadataCollection;
+use PHPUnit\Util\Sanitizer;
 
 /**
  * @immutable
@@ -216,23 +217,7 @@ final readonly class TestMethod extends Test
      */
     public function name(): string
     {
-        $name = $this->methodName;
-
-        if ($this->testData->hasDataFromDataProvider()) {
-            $dataSetName = $this->testData->dataFromDataProvider()->dataSetName();
-
-            if (is_int($dataSetName)) {
-                $name .= sprintf(
-                    ' with data set #%d',
-                    $dataSetName,
-                );
-            } else {
-                $name .= sprintf(
-                    ' with data set "%s"',
-                    $dataSetName,
-                );
-            }
-        }
+        $name = $this->nameWithDataSet();
 
         if ($this->totalRepetitions > 1) {
             $name .= sprintf(
@@ -248,6 +233,40 @@ final readonly class TestMethod extends Test
                 $this->attempt,
                 $this->maxAttempts,
             );
+        }
+
+        return $name;
+    }
+
+    /**
+     * @return non-empty-string
+     */
+    public function sortId(): string
+    {
+        return $this->className . '::' . $this->nameWithDataSet();
+    }
+
+    /**
+     * @return non-empty-string
+     */
+    private function nameWithDataSet(): string
+    {
+        $name = $this->methodName;
+
+        if ($this->testData->hasDataFromDataProvider()) {
+            $dataSetName = $this->testData->dataFromDataProvider()->dataSetName();
+
+            if (is_int($dataSetName)) {
+                $name .= sprintf(
+                    ' with data set #%d',
+                    $dataSetName,
+                );
+            } else {
+                $name .= sprintf(
+                    ' with data set "%s"',
+                    Sanitizer::sanitizeBidirectionalControlCharacters($dataSetName),
+                );
+            }
         }
 
         return $name;

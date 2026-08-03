@@ -24,12 +24,14 @@ use PHPUnit\Metadata\BackupGlobals;
 use PHPUnit\Metadata\BackupStaticProperties;
 use PHPUnit\Metadata\ExcludeGlobalVariableFromBackup;
 use PHPUnit\Metadata\ExcludeStaticPropertyFromBackup;
+use PHPUnit\Metadata\Metadata;
+use PHPUnit\Metadata\MetadataCollection;
 use PHPUnit\Metadata\Parser\Registry as MetadataRegistry;
 use PHPUnit\Metadata\PreserveGlobalState;
 use PHPUnit\Metadata\Repeat as RepeatMetadata;
 use PHPUnit\Metadata\Retry as RetryMetadata;
 use PHPUnit\Runner\ErrorHandler;
-use PHPUnit\Runner\Filter\MethodNameFilterCompiler;
+use PHPUnit\Runner\Filter\CompiledNameFilter;
 use PHPUnit\TextUI\Configuration\Registry as ConfigurationRegistry;
 use ReflectionClass;
 use ReflectionMethod;
@@ -71,10 +73,15 @@ final readonly class TestBuilder
             $numberOfRuns     = $metadata->times();
             $failureThreshold = $metadata->failureThreshold();
 
-            // a method-level #[Repeat] attribute takes precedence over the --retry CLI option
-            $maxAttempts = 1;
+            // an attribute that does not ask for more than one run does not select
+            // repetition, so it neither conflicts with --retry nor makes the
+            // eligibility of the method relevant
+            if ($numberOfRuns > 1) {
+                // a method-level #[Repeat] attribute takes precedence over the --retry CLI option
+                $maxAttempts = 1;
 
-            $this->warnWhenMethodIsIneligible('Repeat', 'repeated', $theClass, $className, $methodName);
+                $this->warnWhenMethodIsIneligible('Repeat', 'repeated', $theClass, $className, $methodName);
+            }
         }
 
         $retryMetadata = MetadataRegistry::parser()->forMethod($className, $methodName)->isRetry();
@@ -95,7 +102,9 @@ final readonly class TestBuilder
 
                 $maxAttempts = $metadata->maxAttempts();
 
-                $this->warnWhenMethodIsIneligible('Retry', 'retried', $theClass, $className, $methodName);
+                if ($maxAttempts > 1) {
+                    $this->warnWhenMethodIsIneligible('Retry', 'retried', $theClass, $className, $methodName);
+                }
             }
         }
 
@@ -402,20 +411,15 @@ final readonly class TestBuilder
         $backupGlobals            = null;
         $backupGlobalsExcludeList = [];
 
-        if ($metadataForMethod->isBackupGlobals()->isNotEmpty()) {
-            $metadata = $metadataForMethod->isBackupGlobals()->asArray()[0];
+        $backupGlobalsMetadata = $this->methodOrClassLevelMetadata(
+            $metadataForMethod->isBackupGlobals(),
+            $metadataForClass->isBackupGlobals(),
+        );
 
-            assert($metadata instanceof BackupGlobals);
+        if ($backupGlobalsMetadata !== null) {
+            assert($backupGlobalsMetadata instanceof BackupGlobals);
 
-            if ($metadata->enabled()) {
-                $backupGlobals = true;
-            }
-        } elseif ($metadataForClass->isBackupGlobals()->isNotEmpty()) {
-            $metadata = $metadataForClass->isBackupGlobals()->asArray()[0];
-
-            assert($metadata instanceof BackupGlobals);
-
-            if ($metadata->enabled()) {
+            if ($backupGlobalsMetadata->enabled()) {
                 $backupGlobals = true;
             }
         }
@@ -429,20 +433,15 @@ final readonly class TestBuilder
         $backupStaticProperties            = null;
         $backupStaticPropertiesExcludeList = [];
 
-        if ($metadataForMethod->isBackupStaticProperties()->isNotEmpty()) {
-            $metadata = $metadataForMethod->isBackupStaticProperties()->asArray()[0];
+        $backupStaticPropertiesMetadata = $this->methodOrClassLevelMetadata(
+            $metadataForMethod->isBackupStaticProperties(),
+            $metadataForClass->isBackupStaticProperties(),
+        );
 
-            assert($metadata instanceof BackupStaticProperties);
+        if ($backupStaticPropertiesMetadata !== null) {
+            assert($backupStaticPropertiesMetadata instanceof BackupStaticProperties);
 
-            if ($metadata->enabled()) {
-                $backupStaticProperties = true;
-            }
-        } elseif ($metadataForClass->isBackupStaticProperties()->isNotEmpty()) {
-            $metadata = $metadataForClass->isBackupStaticProperties()->asArray()[0];
-
-            assert($metadata instanceof BackupStaticProperties);
-
-            if ($metadata->enabled()) {
+            if ($backupStaticPropertiesMetadata->enabled()) {
                 $backupStaticProperties = true;
             }
         }
@@ -471,24 +470,32 @@ final readonly class TestBuilder
      */
     private function shouldGlobalStateBePreserved(string $className, string $methodName): ?bool
     {
-        $metadataForMethod = MetadataRegistry::parser()->forMethod($className, $methodName);
+        $metadata = $this->methodOrClassLevelMetadata(
+            MetadataRegistry::parser()->forMethod($className, $methodName)->isPreserveGlobalState(),
+            MetadataRegistry::parser()->forClass($className)->isPreserveGlobalState(),
+        );
 
-        if ($metadataForMethod->isPreserveGlobalState()->isNotEmpty()) {
-            $metadata = $metadataForMethod->isPreserveGlobalState()->asArray()[0];
-
-            assert($metadata instanceof PreserveGlobalState);
-
-            return $metadata->enabled();
+        if ($metadata === null) {
+            return null;
         }
 
-        $metadataForClass = MetadataRegistry::parser()->forClass($className);
+        assert($metadata instanceof PreserveGlobalState);
 
-        if ($metadataForClass->isPreserveGlobalState()->isNotEmpty()) {
-            $metadata = $metadataForClass->isPreserveGlobalState()->asArray()[0];
+        return $metadata->enabled();
+    }
 
-            assert($metadata instanceof PreserveGlobalState);
+    /**
+     * Metadata on a test method takes precedence over metadata on the class
+     * that declares it.
+     */
+    private function methodOrClassLevelMetadata(MetadataCollection $forMethod, MetadataCollection $forClass): ?Metadata
+    {
+        if ($forMethod->isNotEmpty()) {
+            return $forMethod->asArray()[0];
+        }
 
-            return $metadata->enabled();
+        if ($forClass->isNotEmpty()) {
+            return $forClass->asArray()[0];
         }
 
         return null;
@@ -536,13 +543,13 @@ final readonly class TestBuilder
             return false;
         }
 
-        $regularExpression = MethodNameFilterCompiler::compile($configuration->filter());
+        $filter = CompiledNameFilter::from($configuration->filter());
 
-        if ($regularExpression === null) {
+        if (!$filter->constrainsMethodName()) {
             return false;
         }
 
-        $result = @preg_match($regularExpression, $className . '::' . $methodName);
+        $result = @preg_match($filter->methodNameRegularExpression(), $className . '::' . $methodName);
 
         if ($result === false) {
             return false;

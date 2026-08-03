@@ -50,8 +50,8 @@ final class LoaderTest extends TestCase
             'executionOrder size-ascending'      => ['executionOrder', 'size-ascending', TestSuiteSorter::ORDER_SIZE_ASCENDING],
             'executionOrder size-descending'     => ['executionOrder', 'size-descending', TestSuiteSorter::ORDER_SIZE_DESCENDING],
             'cacheDirectory absolute path'       => ['cacheDirectory', '/path/to/cache', '/path/to/cache'],
-            'cacheResult=false'                  => ['cacheResult', 'false', false],
-            'cacheResult=true'                   => ['cacheResult', 'true', true],
+            'recordTestRunHistory=false'         => ['recordTestRunHistory', 'false', false],
+            'recordTestRunHistory=true'          => ['recordTestRunHistory', 'true', true],
             'columns'                            => ['columns', 'max', 'max'],
             'stopOnFailure'                      => ['stopOnFailure', 'true', true],
             'stopOnWarning'                      => ['stopOnWarning', 'true', true],
@@ -498,6 +498,7 @@ final class LoaderTest extends TestCase
         $this->assertTrue($phpunit->controlGarbageCollector());
         $this->assertSame(1000, $phpunit->numberOfTestsBeforeGarbageCollection());
         $this->assertSame(10, $phpunit->shortenArraysForExportThreshold());
+        $this->assertTrue($phpunit->warnWhenPhpIsNotConfiguredForDevelopment());
     }
 
     public function test_TestDox_configuration_is_parsed_correctly(): void

@@ -73,10 +73,16 @@ final readonly class Merger
             $bootstrap = $xmlConfiguration->phpunit()->bootstrap();
         }
 
-        if ($cliConfiguration->hasCacheResult()) {
-            $cacheResult = $cliConfiguration->cacheResult();
+        if ($cliConfiguration->hasRecordTestRunHistory()) {
+            $recordTestRunHistory = $cliConfiguration->recordTestRunHistory();
         } else {
-            $cacheResult = $xmlConfiguration->phpunit()->cacheResult();
+            $recordTestRunHistory = $xmlConfiguration->phpunit()->recordTestRunHistory();
+        }
+
+        if ($cliConfiguration->hasWarnWhenPhpIsNotConfiguredForDevelopment()) {
+            $warnWhenPhpIsNotConfiguredForDevelopment = $cliConfiguration->warnWhenPhpIsNotConfiguredForDevelopment();
+        } else {
+            $warnWhenPhpIsNotConfiguredForDevelopment = $xmlConfiguration->phpunit()->warnWhenPhpIsNotConfiguredForDevelopment();
         }
 
         $cacheDirectory         = null;
@@ -94,17 +100,17 @@ final readonly class Merger
 
         if ($cacheDirectory !== null) {
             $coverageCacheDirectory = $cacheDirectory . DIRECTORY_SEPARATOR . 'code-coverage';
-            $testResultCacheFile    = $cacheDirectory . DIRECTORY_SEPARATOR . 'test-results';
+            $testRunHistoryFile     = $cacheDirectory . DIRECTORY_SEPARATOR . 'test-run-history';
         }
 
-        if (!isset($testResultCacheFile)) {
+        if (!isset($testRunHistoryFile)) {
             if ($xmlConfiguration->wasLoadedFromFile()) {
                 $configurationFileRealpath = realpath($xmlConfiguration->filename());
 
                 if ($configurationFileRealpath !== false) {
-                    $testResultCacheFile = dirname($configurationFileRealpath) . DIRECTORY_SEPARATOR . '.phpunit.result.cache';
+                    $testRunHistoryFile = dirname($configurationFileRealpath) . DIRECTORY_SEPARATOR . '.phpunit.result.cache';
                 } else {
-                    $testResultCacheFile = '.phpunit.result.cache';
+                    $testRunHistoryFile = '.phpunit.result.cache';
                 }
             } else {
                 $phpSelf = null;
@@ -120,9 +126,9 @@ final readonly class Merger
                 }
 
                 if ($candidate !== false) {
-                    $testResultCacheFile = dirname($candidate) . DIRECTORY_SEPARATOR . '.phpunit.result.cache';
+                    $testRunHistoryFile = dirname($candidate) . DIRECTORY_SEPARATOR . '.phpunit.result.cache';
                 } else {
-                    $testResultCacheFile = '.phpunit.result.cache';
+                    $testRunHistoryFile = '.phpunit.result.cache';
                 }
             }
         }
@@ -1280,7 +1286,7 @@ final readonly class Merger
             $configurationFile,
             $bootstrap,
             $xmlConfiguration->phpunit()->bootstrapForTestSuite(),
-            $cacheResult,
+            $recordTestRunHistory,
             $cacheDirectory,
             $coverageCacheDirectory,
             new Source(
@@ -1307,7 +1313,7 @@ final readonly class Merger
                 $xmlConfiguration->source()->issueTriggerResolvers(),
                 $xmlConfiguration->source()->deprecationFilters(),
             ),
-            $testResultCacheFile,
+            $testRunHistoryFile,
             $coverageClover,
             $coverageCobertura,
             $coverageCrap4j,
@@ -1475,6 +1481,7 @@ final readonly class Merger
             $cliConfiguration->debug(),
             $cliConfiguration->withTelemetry(),
             $xmlConfiguration->phpunit()->shortenArraysForExportThreshold(),
+            $warnWhenPhpIsNotConfiguredForDevelopment,
         );
     }
 

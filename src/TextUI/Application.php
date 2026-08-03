@@ -58,15 +58,17 @@ use PHPUnit\Runner\DeprecationFilter;
 use PHPUnit\Runner\DirectoryDoesNotExistException;
 use PHPUnit\Runner\ErrorHandler;
 use PHPUnit\Runner\Extension\ExtensionBootstrapper;
+use PHPUnit\Runner\Extension\ExtensionCapabilities;
 use PHPUnit\Runner\Extension\ExtensionFacade;
 use PHPUnit\Runner\Extension\PharLoader;
 use PHPUnit\Runner\GarbageCollection\GarbageCollectionHandler;
 use PHPUnit\Runner\IssueTriggerResolver\Resolver;
+use PHPUnit\Runner\PhpConfiguration\PhpConfigurationChecker;
 use PHPUnit\Runner\Phpt\TestCase as PhptTestCase;
-use PHPUnit\Runner\ResultCache\DefaultResultCache;
-use PHPUnit\Runner\ResultCache\NullResultCache;
-use PHPUnit\Runner\ResultCache\ResultCache;
-use PHPUnit\Runner\ResultCache\ResultCacheHandler;
+use PHPUnit\Runner\TestRunHistory\DefaultTestRunHistory;
+use PHPUnit\Runner\TestRunHistory\NullTestRunHistory;
+use PHPUnit\Runner\TestRunHistory\TestRunHistory;
+use PHPUnit\Runner\TestRunHistory\TestRunHistoryHandler;
 use PHPUnit\Runner\TestSuiteSorter;
 use PHPUnit\Runner\Version;
 use PHPUnit\TestRunner\IssueFilter;
@@ -122,8 +124,6 @@ final readonly class Application
      */
     public function run(array $argv): int
     {
-        $this->preload();
-
         try {
             EventFacade::emitter()->applicationStarted();
 
@@ -131,6 +131,10 @@ final readonly class Application
             $pathToXmlConfigurationFile = (new XmlConfigurationFileFinder)->find($cliConfiguration);
 
             $this->executeCommandsThatOnlyRequireCliConfiguration($cliConfiguration, $pathToXmlConfigurationFile);
+
+            // the commands above end the process; preloading is therefore only
+            // worthwhile once it is known that tests are going to be run
+            $this->preload();
 
             $xmlConfiguration = $this->loadXmlConfiguration($pathToXmlConfigurationFile);
 
@@ -151,11 +155,8 @@ final readonly class Application
 
             $this->executeCommandsThatDoNotRequireTheTestSuite($configuration, $cliConfiguration);
 
-            $pharExtensions                          = null;
-            $extensionRequiresCodeCoverageCollection = false;
-            $extensionReplacesOutput                 = false;
-            $extensionReplacesProgressOutput         = false;
-            $extensionReplacesResultOutput           = false;
+            $pharExtensions        = null;
+            $extensionCapabilities = ExtensionCapabilities::none();
 
             if (!$configuration->noExtensions()) {
                 if ($configuration->hasPharExtensionDirectory()) {
@@ -164,17 +165,12 @@ final readonly class Application
                     );
                 }
 
-                $bootstrappedExtensions                  = $this->bootstrapExtensions($configuration);
-                $extensionRequiresCodeCoverageCollection = $bootstrappedExtensions['requiresCodeCoverageCollection'];
-                $extensionReplacesOutput                 = $bootstrappedExtensions['replacesOutput'];
-                $extensionReplacesProgressOutput         = $bootstrappedExtensions['replacesProgressOutput'];
-                $extensionReplacesResultOutput           = $bootstrappedExtensions['replacesResultOutput'];
+                $extensionCapabilities = $this->bootstrapExtensions($configuration);
             }
 
             $printer = OutputFacade::init(
                 $configuration,
-                $extensionReplacesProgressOutput,
-                $extensionReplacesResultOutput,
+                $extensionCapabilities,
             );
 
             if ($configuration->debug()) {
@@ -193,7 +189,7 @@ final readonly class Application
 
             $testDoxResultCollector = $this->testDoxResultCollector($configuration);
 
-            $resultCache = $this->initializeTestResultCache($configuration);
+            $testRunHistory = $this->initializeTestRunHistory($configuration);
 
             if ($configuration->controlGarbageCollector()) {
                 new GarbageCollectionHandler(
@@ -203,6 +199,8 @@ final readonly class Application
             }
 
             $baselineGenerator = $this->configureBaseline($configuration);
+
+            $this->checkPhpConfiguration($configuration);
 
             EventFacade::instance()->seal();
 
@@ -234,10 +232,10 @@ final readonly class Application
             $coverageInitializationStatus = CodeCoverage::instance()->init(
                 $configuration,
                 CodeCoverageFilterRegistry::instance(),
-                $extensionRequiresCodeCoverageCollection,
+                $extensionCapabilities->requiresCodeCoverageCollection(),
             );
 
-            if (!$configuration->debug() && !$extensionReplacesOutput) {
+            if (!$configuration->debug() && !$extensionCapabilities->replacesOutput()) {
                 $this->writeRuntimeInformation($printer, $configuration);
                 $this->writePharExtensionInformation($printer, $pharExtensions);
                 $this->writeRandomSeedInformation($printer, $configuration);
@@ -256,7 +254,7 @@ final readonly class Application
 
                 $runner->run(
                     $configuration,
-                    $resultCache,
+                    $testRunHistory,
                     $testSuite,
                 );
             }
@@ -308,18 +306,18 @@ final readonly class Application
             $result = TestResultFacade::result();
 
             if (TestResultFacade::wasInterrupted()) {
-                if (!$extensionReplacesResultOutput && !$configuration->debug()) {
+                if (!$extensionCapabilities->replacesResultOutput() && !$configuration->debug()) {
                     $printer->print(PHP_EOL . PHP_EOL);
                 }
 
                 $printer->print('Test execution was interrupted by a signal.');
 
-                if ($extensionReplacesResultOutput || $configuration->debug()) {
+                if ($extensionCapabilities->replacesResultOutput() || $configuration->debug()) {
                     $printer->print(PHP_EOL);
                 }
             }
 
-            if (!$extensionReplacesResultOutput && !$configuration->debug()) {
+            if (!$extensionCapabilities->replacesResultOutput() && !$configuration->debug()) {
                 OutputFacade::printResult(
                     $result,
                     $testDoxResult,
@@ -436,10 +434,7 @@ final readonly class Application
         }
     }
 
-    /**
-     * @return array{requiresCodeCoverageCollection: bool, replacesOutput: bool, replacesProgressOutput: bool, replacesResultOutput: bool}
-     */
-    private function bootstrapExtensions(Configuration $configuration): array
+    private function bootstrapExtensions(Configuration $configuration): ExtensionCapabilities
     {
         $facade = new ExtensionFacade;
 
@@ -455,12 +450,7 @@ final readonly class Application
             );
         }
 
-        return [
-            'requiresCodeCoverageCollection' => $facade->requiresCodeCoverageCollection(),
-            'replacesOutput'                 => $facade->replacesOutput(),
-            'replacesProgressOutput'         => $facade->replacesProgressOutput(),
-            'replacesResultOutput'           => $facade->replacesResultOutput(),
-        ];
+        return $facade->capabilities();
     }
 
     private function executeCommandsThatOnlyRequireCliConfiguration(CliConfiguration $cliConfiguration, false|string $configurationFile): void
@@ -756,17 +746,73 @@ final readonly class Application
         return null;
     }
 
-    private function initializeTestResultCache(Configuration $configuration): ResultCache
+    private function initializeTestRunHistory(Configuration $configuration): TestRunHistory
     {
-        if ($configuration->cacheResult()) {
-            $cache = new DefaultResultCache($configuration->testResultCacheFile());
+        if ($configuration->recordTestRunHistory()) {
+            $testRunHistory = new DefaultTestRunHistory($configuration->testRunHistoryFile());
 
-            new ResultCacheHandler($cache, EventFacade::instance());
+            new TestRunHistoryHandler(
+                $testRunHistory,
+                EventFacade::instance(),
+                $this->testRunHistoryMayBePruned($configuration),
+            );
 
-            return $cache;
+            return $testRunHistory;
         }
 
-        return new NullResultCache;
+        if ($configuration->executionOrderDefects() === TestSuiteSorter::ORDER_DEFECTS_FIRST) {
+            EventFacade::emitter()->testRunnerTriggeredPhpunitWarning(
+                'Tests cannot be ordered by defects because recording of the test run history is disabled',
+            );
+        }
+
+        if ($configuration->executionOrder() === TestSuiteSorter::ORDER_DURATION_ASCENDING ||
+            $configuration->executionOrder() === TestSuiteSorter::ORDER_DURATION_DESCENDING) {
+            EventFacade::emitter()->testRunnerTriggeredPhpunitWarning(
+                'Tests cannot be ordered by duration because recording of the test run history is disabled',
+            );
+        }
+
+        return new NullTestRunHistory;
+    }
+
+    /**
+     * Pruning drops all test run history entries that the current test run
+     * did not touch, so it is only safe when the current test run executes
+     * every test that exists: no test selection or filtering of any kind may
+     * be configured.
+     */
+    private function testRunHistoryMayBePruned(Configuration $configuration): bool
+    {
+        if ($configuration->hasCliArguments() || $configuration->hasTestFilesFile()) {
+            return false;
+        }
+
+        if ($configuration->hasFilter() || $configuration->hasExcludeFilter()) {
+            return false;
+        }
+
+        if ($configuration->hasTestIdFilter() || $configuration->hasTestIdFilterFile()) {
+            return false;
+        }
+
+        if ($configuration->hasGroups() || $configuration->hasExcludeGroups()) {
+            return false;
+        }
+
+        if ($configuration->hasTestsCovering() || $configuration->hasTestsUsing() || $configuration->hasTestsRequiringPhpExtension()) {
+            return false;
+        }
+
+        if ($configuration->includeTestSuites() !== [] || $configuration->excludeTestSuites() !== []) {
+            return false;
+        }
+
+        if ($configuration->hasDefaultTestSuite() && count($configuration->testSuite()) > 1) {
+            return false;
+        }
+
+        return true;
     }
 
     private function configureBaseline(Configuration $configuration): ?BaselineGenerator
@@ -800,6 +846,28 @@ final readonly class Application
         }
 
         return null;
+    }
+
+    private function checkPhpConfiguration(Configuration $configuration): void
+    {
+        if (!$configuration->warnWhenPhpIsNotConfiguredForDevelopment()) {
+            return;
+        }
+
+        foreach ((new PhpConfigurationChecker)->check() as $result) {
+            if ($result->isOk()) {
+                continue;
+            }
+
+            EventFacade::emitter()->testRunnerTriggeredPhpunitWarning(
+                sprintf(
+                    'PHP is not configured for development: %s should be %s, but is %s',
+                    $result->name(),
+                    $result->valueForConfiguration(),
+                    $result->actualValue(),
+                ),
+            );
+        }
     }
 
     /**

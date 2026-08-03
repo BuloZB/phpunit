@@ -8,4 +8,6 @@
             <directory>tests</directory>
         </testsuite>
     </testsuites>
+
+    <source ignoreSuppressionOfDeprecations="true"/>
 </phpunit>

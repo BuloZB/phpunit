@@ -2,7 +2,7 @@
 A previously registered error handler that checks error_reporting() dynamically observes the suppression mask for an error suppressed using the @ operator in a data provider
 --FILE--
 <?php declare(strict_types=1);
-$_SERVER['argv'][] = '--do-not-cache-result';
+$_SERVER['argv'][] = '--do-not-record-test-run-history';
 $_SERVER['argv'][] = '--no-configuration';
 $_SERVER['argv'][] = '--debug';
 $_SERVER['argv'][] = __DIR__ . '/_files/DataProviderSuppressedTest.php';
@@ -33,7 +33,7 @@ Test Suite Sorted
 Test Runner Execution Started (1 test)
 Test Suite Started (PHPUnit\TestFixture\ErrorHandler\DataProviderSuppressedTest, 1 test)
 Test Suite for Test Method with Data Provider Started (PHPUnit\TestFixture\ErrorHandler\DataProviderSuppressedTest::testSuppressedWarningFromDataProvider, 1 data set)
-Test Triggered Warning (PHPUnit\TestFixture\ErrorHandler\DataProviderSuppressedTest::testSuppressedWarningFromDataProvider#0) in %s:%d
+Test Triggered Warning (PHPUnit\TestFixture\ErrorHandler\DataProviderSuppressedTest::testSuppressedWarningFromDataProvider#0, suppressed using operator) in %s:%d
 suppressed warning from data provider
 Test Preparation Started (PHPUnit\TestFixture\ErrorHandler\DataProviderSuppressedTest::testSuppressedWarningFromDataProvider#0)
 Test Prepared (PHPUnit\TestFixture\ErrorHandler\DataProviderSuppressedTest::testSuppressedWarningFromDataProvider#0)

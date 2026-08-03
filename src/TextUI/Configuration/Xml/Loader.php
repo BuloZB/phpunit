@@ -800,6 +800,23 @@ final readonly class Loader
         );
     }
 
+    private function parseRecordTestRunHistoryAttribute(DOMElement $element): bool
+    {
+        if ($element->hasAttribute('recordTestRunHistory')) {
+            return $this->parseBooleanAttribute($element, 'recordTestRunHistory', true);
+        }
+
+        if ($element->hasAttribute('cacheResult')) {
+            EventFacade::emitter()->testRunnerTriggeredPhpunitDeprecation(
+                'The "cacheResult" attribute is deprecated and will be removed in PHPUnit 14. Use "recordTestRunHistory" instead.',
+            );
+
+            return $this->parseBooleanAttribute($element, 'cacheResult', true);
+        }
+
+        return true;
+    }
+
     private function parseBooleanAttribute(DOMElement $element, string $attribute, bool $default): bool
     {
         if (!$element->hasAttribute($attribute)) {
@@ -1213,7 +1230,7 @@ final readonly class Loader
 
         return new PHPUnit(
             $cacheDirectory,
-            $this->parseBooleanAttribute($documentElement, 'cacheResult', true),
+            $this->parseRecordTestRunHistoryAttribute($documentElement),
             $this->parseColumns($document),
             $this->parseColors($document),
             $this->parseBooleanAttribute($documentElement, 'stderr', false),
@@ -1291,6 +1308,7 @@ final readonly class Loader
             $this->parsePositiveIntegerAttribute($documentElement, 'numberOfTestsBeforeGarbageCollection', 100),
             $shortenArraysForExportThreshold,
             $this->parsePositiveIntegerAttribute($documentElement, 'diffContext', 3),
+            $this->parseBooleanAttribute($documentElement, 'warnWhenPhpIsNotConfiguredForDevelopment', false),
         );
     }
 
