@@ -125,6 +125,17 @@ final class ConfigurationTest extends TestCase
         $configuration->coverageCobertura();
     }
 
+    public function testCoverageJsonlThrowsWhenNotConfigured(): void
+    {
+        $configuration = $this->defaultConfiguration();
+
+        $this->assertFalse($configuration->hasCoverageJsonl());
+
+        $this->expectException(CodeCoverageReportNotConfiguredException::class);
+
+        $configuration->coverageJsonl();
+    }
+
     public function testCoverageCrap4jThrowsWhenNotConfigured(): void
     {
         $configuration = $this->defaultConfiguration();
@@ -431,6 +442,14 @@ final class ConfigurationTest extends TestCase
         $this->assertSame(30, $configuration->coverageCrap4jThreshold());
     }
 
+    public function testReturnsDefaultValuesForCoverageHtmlReportViews(): void
+    {
+        $configuration = $this->defaultConfiguration();
+
+        $this->assertTrue($configuration->coverageHtmlClassView());
+        $this->assertTrue($configuration->coverageHtmlFileView());
+    }
+
     public function testReturnsDefaultValuesForCoverageHtmlReportColors(): void
     {
         $configuration = $this->defaultConfiguration();
@@ -494,6 +513,9 @@ final class ConfigurationTest extends TestCase
         $this->assertTrue($configuration->hasCoverageCrap4j());
         $this->assertStringEndsWith('crap4j.xml', $configuration->coverageCrap4j());
         $this->assertSame(42, $configuration->coverageCrap4jThreshold());
+
+        $this->assertTrue($configuration->hasCoverageJsonl());
+        $this->assertStringEndsWith('coverage-jsonl', $configuration->coverageJsonl());
 
         $this->assertTrue($configuration->hasCoverageHtml());
         $this->assertStringEndsWith('coverage', $configuration->coverageHtml());

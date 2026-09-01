@@ -224,7 +224,6 @@ final class TestRunHistoryHandlerTest extends AbstractEventTestCase
 
         $test = $this->testValueObject();
 
-        $handler->testSuiteStarted();
         $handler->testFailed(
             new Failed(
                 $this->telemetryInfo(),
@@ -233,7 +232,7 @@ final class TestRunHistoryHandlerTest extends AbstractEventTestCase
                 null,
             ),
         );
-        $handler->testSuiteFinished();
+        $handler->testRunnerExecutionFinished();
 
         $loaded = new DefaultTestRunHistory($file);
         $loaded->load();
@@ -261,7 +260,6 @@ final class TestRunHistoryHandlerTest extends AbstractEventTestCase
 
         $test = $this->testValueObject();
 
-        $handler->testSuiteStarted();
         $handler->testFailed(
             new Failed(
                 $this->telemetryInfo(),
@@ -271,7 +269,7 @@ final class TestRunHistoryHandlerTest extends AbstractEventTestCase
             ),
         );
         $handler->testRunnerExecutionAborted();
-        $handler->testSuiteFinished();
+        $handler->testRunnerExecutionFinished();
 
         $loaded = new DefaultTestRunHistory($file);
         $loaded->load();
@@ -353,5 +351,18 @@ final class TestRunHistoryHandlerTest extends AbstractEventTestCase
         $handler->testFinished(new Finished($this->telemetryInfo(), $test, 1));
 
         $this->assertLessThan(5.0, $cache->time($id));
+    }
+
+    public function testFinishedWithoutPreparedRecordsZeroDuration(): void
+    {
+        $cache   = new DefaultTestRunHistory(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'phpunit-handler-test.cache');
+        $handler = new TestRunHistoryHandler($cache, new Facade, false);
+
+        $test = $this->testValueObject();
+        $id   = TestRunHistoryId::fromTest($test);
+
+        $handler->testFinished(new Finished($this->telemetryInfo(), $test, 1));
+
+        $this->assertSame(0.0, $cache->time($id));
     }
 }

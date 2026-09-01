@@ -44,6 +44,8 @@ final class Builder
         'do-not-cache-result',
         'record-test-run-history',
         'do-not-record-test-run-history',
+        'cache-test-index',
+        'do-not-cache-test-index',
         'cache-directory=',
         'check-version',
         'check-php-configuration',
@@ -60,6 +62,7 @@ final class Builder
         'coverage-html=',
         'without-class-view',
         'without-file-view',
+        'coverage-jsonl=',
         'coverage-openclover=',
         'coverage-php=',
         'coverage-text==',
@@ -199,6 +202,7 @@ final class Builder
         ['--record-test-run-history', '--do-not-record-test-run-history'],
         ['--cache-result', '--do-not-record-test-run-history'],
         ['--record-test-run-history', '--do-not-cache-result'],
+        ['--cache-test-index', '--do-not-cache-test-index'],
         ['--warn-when-php-is-not-configured-for-development', '--do-not-warn-when-php-is-not-configured-for-development'],
         ['--fail-on-deprecation', '--do-not-fail-on-deprecation'],
         ['--fail-on-self-deprecation', '--do-not-fail-on-self-deprecation'],
@@ -284,6 +288,7 @@ final class Builder
         $bootstrap                                = null;
         $cacheDirectory                           = null;
         $recordTestRunHistory                     = null;
+        $cacheTestIndex                           = null;
         $checkPhpConfiguration                    = false;
         $checkVersion                             = false;
         $colors                                   = null;
@@ -297,6 +302,7 @@ final class Builder
         $coverageHtml                             = null;
         $withoutClassView                         = null;
         $withoutFileView                          = null;
+        $coverageJsonl                            = null;
         $coverageOpenClover                       = null;
         $coveragePhp                              = null;
         $coverageText                             = null;
@@ -479,6 +485,16 @@ final class Builder
 
                     break;
 
+                case '--cache-test-index':
+                    $cacheTestIndex = true;
+
+                    break;
+
+                case '--do-not-cache-test-index':
+                    $cacheTestIndex = false;
+
+                    break;
+
                 case '--columns':
                     if (is_numeric($option[1])) {
                         $columns = (int) $option[1];
@@ -526,6 +542,11 @@ final class Builder
 
                 case '--without-file-view':
                     $withoutFileView = true;
+
+                    break;
+
+                case '--coverage-jsonl':
+                    $coverageJsonl = $option[1];
 
                     break;
 
@@ -1437,9 +1458,11 @@ final class Builder
         $arguments = [];
 
         foreach ($options[1] as $argument) {
+            // @codeCoverageIgnoreStart
             if ($argument === '') {
                 continue;
             }
+            // @codeCoverageIgnoreEnd
 
             $arguments[] = $argument;
         }
@@ -1469,6 +1492,7 @@ final class Builder
             $coverageHtml,
             $withoutClassView,
             $withoutFileView,
+            $coverageJsonl,
             $coverageOpenClover,
             $coveragePhp,
             $coverageText,
@@ -1592,6 +1616,7 @@ final class Builder
             $debug,
             $withTelemetry,
             $extensions,
+            $cacheTestIndex,
         );
     }
 

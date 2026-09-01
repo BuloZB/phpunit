@@ -51,7 +51,6 @@ use Throwable;
  */
 final class TestRunner
 {
-    private ?bool $timeLimitCanBeEnforced = null;
     private readonly Configuration $configuration;
 
     public function __construct()
@@ -274,52 +273,16 @@ final class TestRunner
      */
     private function hasCoverageMetadata(string $className, string $methodName): bool
     {
-        foreach (MetadataRegistry::parser()->forClassAndMethod($className, $methodName) as $metadata) {
-            if ($metadata->isCoversNamespace()) {
-                return true;
-            }
-
-            if ($metadata->isCoversTrait()) {
-                return true;
-            }
-
-            if ($metadata->isCoversClass()) {
-                return true;
-            }
-
-            if ($metadata->isCoversClassesThatExtendClass()) {
-                return true;
-            }
-
-            if ($metadata->isCoversClassesThatImplementInterface()) {
-                return true;
-            }
-
-            if ($metadata->isCoversMethod()) {
-                return true;
-            }
-
-            if ($metadata->isCoversFunction()) {
-                return true;
-            }
-
-            if ($metadata->isCoversNothing()) {
-                return true;
-            }
+        if (MetadataRegistry::parser()->forClassAndMethod($className, $methodName)->isCoversNothing()->isNotEmpty()) {
+            return true;
         }
 
-        return false;
+        return (new CodeCoverageMetadataApi)->coversTargets($className, $methodName)->isNotEmpty();
     }
 
     private function canTimeLimitBeEnforced(): bool
     {
-        if ($this->timeLimitCanBeEnforced !== null) {
-            return $this->timeLimitCanBeEnforced;
-        }
-
-        $this->timeLimitCanBeEnforced = (new Invoker)->canInvokeWithTimeout();
-
-        return $this->timeLimitCanBeEnforced;
+        return (new Invoker)->canInvokeWithTimeout();
     }
 
     private function shouldTimeLimitBeEnforced(TestCase $test): bool
@@ -333,7 +296,11 @@ final class TestRunner
         }
 
         if (extension_loaded('xdebug') && xdebug_is_debugger_active()) {
+            // a debugging session cannot be active while the tests for PHPUnit
+            // itself are run
+            // @codeCoverageIgnoreStart
             return false;
+            // @codeCoverageIgnoreEnd
         }
 
         return true;

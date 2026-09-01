@@ -21,7 +21,11 @@ use PHPUnit\Framework\TestCase;
 
 #[CoversClass(Parser::class)]
 #[CoversClass(CannotLoadPhptFileException::class)]
+#[CoversClass(ConflictingPhptSectionsException::class)]
+#[CoversClass(DuplicatePhptSectionException::class)]
+#[CoversClass(InvalidPhptFileException::class)]
 #[CoversClass(PhptExternalFileCannotBeLoadedException::class)]
+#[CoversClass(UnknownPhptSectionException::class)]
 #[Small]
 #[Group('test-runner')]
 #[Group('test-runner/phpt')]
@@ -82,6 +86,66 @@ final class ParserTest extends TestCase
         $parser->parse($file);
     }
 
+    public function testRejectsTextBeforeFirstSection(): void
+    {
+        $parser = new Parser;
+
+        $this->expectException(InvalidPhptFileException::class);
+        $this->expectExceptionMessage('PHPT file must not contain text before its first section (line 1)');
+
+        $parser->parse(__DIR__ . '/../../../_files/phpt/invalid/content-before-section.phpt');
+    }
+
+    public function testRejectsFileWithoutCodeSection(): void
+    {
+        $parser = new Parser;
+
+        $this->expectException(InvalidPhptFileException::class);
+        $this->expectExceptionMessage('PHPT file must contain one of the sections --FILE--, --FILEEOF--, --FILE_EXTERNAL--');
+
+        $parser->parse(__DIR__ . '/../../../_files/phpt/invalid/no-test-code.phpt');
+    }
+
+    public function testRejectsFileWithoutExpectationSection(): void
+    {
+        $parser = new Parser;
+
+        $this->expectException(InvalidPhptFileException::class);
+        $this->expectExceptionMessage('PHPT file must contain one of the sections --EXPECT--, --EXPECT_EXTERNAL--, --EXPECTF--, --EXPECTF_EXTERNAL--, --EXPECTREGEX--, --EXPECTREGEX_EXTERNAL--');
+
+        $parser->parse(__DIR__ . '/../../../_files/phpt/invalid/no-expectation-code.phpt');
+    }
+
+    public function testRejectsEmptyFileSection(): void
+    {
+        $parser = new Parser;
+
+        $this->expectException(InvalidPhptFileException::class);
+        $this->expectExceptionMessage('--FILE-- section is empty');
+
+        $parser->parse(__DIR__ . '/../../../_files/phpt/invalid/empty-file-section.phpt');
+    }
+
+    public function testRejectsEmptyFileeofSection(): void
+    {
+        $parser = new Parser;
+
+        $this->expectException(InvalidPhptFileException::class);
+        $this->expectExceptionMessage('--FILEEOF-- section is empty');
+
+        $parser->parse(__DIR__ . '/../../../_files/phpt/invalid/empty-fileeof-section.phpt');
+    }
+
+    public function testRejectsFileExternalSectionThatReferencesEmptyFile(): void
+    {
+        $parser = new Parser;
+
+        $this->expectException(InvalidPhptFileException::class);
+        $this->expectExceptionMessage('File referenced by --FILE_EXTERNAL-- section is empty');
+
+        $parser->parse(__DIR__ . '/../../../_files/phpt/invalid/empty-file-external-section.phpt');
+    }
+
     public function testParsesFileeofSection(): void
     {
         $parser   = new Parser;
@@ -90,6 +154,46 @@ final class ParserTest extends TestCase
         $this->assertArrayHasKey('FILE', $sections);
         $this->assertArrayNotHasKey('FILEEOF', $sections);
         $this->assertStringContainsString('echo "hello"', $sections['FILE']);
+    }
+
+    public function testRejectsUnknownSections(): void
+    {
+        $parser = new Parser;
+
+        $this->expectException(UnknownPhptSectionException::class);
+        $this->expectExceptionMessage('--SKIPFI-- is not a valid PHPT section');
+
+        $parser->parse(__DIR__ . '/../../../_files/phpt/unknown-section.phpt');
+    }
+
+    public function testRejectsDuplicateSections(): void
+    {
+        $parser = new Parser;
+
+        $this->expectException(DuplicatePhptSectionException::class);
+        $this->expectExceptionMessage('--EXPECT-- section occurs more than once');
+
+        $parser->parse(__DIR__ . '/../../../_files/phpt/duplicate-section.phpt');
+    }
+
+    public function testRejectsConflictingFileSections(): void
+    {
+        $parser = new Parser;
+
+        $this->expectException(ConflictingPhptSectionsException::class);
+        $this->expectExceptionMessage('PHPT file must not contain more than one of the sections --FILE--, --FILEEOF--');
+
+        $parser->parse(__DIR__ . '/../../../_files/phpt/conflicting-file-sections.phpt');
+    }
+
+    public function testRejectsConflictingExpectationSections(): void
+    {
+        $parser = new Parser;
+
+        $this->expectException(ConflictingPhptSectionsException::class);
+        $this->expectExceptionMessage('PHPT file must not contain more than one of the sections --EXPECT--, --EXPECTF--');
+
+        $parser->parse(__DIR__ . '/../../../_files/phpt/conflicting-expectation-sections.phpt');
     }
 
     public function testRejectsExternalFileThatDoesNotExist(): void

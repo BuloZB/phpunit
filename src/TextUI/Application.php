@@ -47,6 +47,7 @@ use PHPUnit\Logging\TeamCity\TeamCityLogger;
 use PHPUnit\Logging\TestDox\HtmlRenderer as TestDoxHtmlRenderer;
 use PHPUnit\Logging\TestDox\PlainTextRenderer as TestDoxTextRenderer;
 use PHPUnit\Logging\TestDox\TestResultCollector as TestDoxResultCollector;
+use PHPUnit\Metadata\Api\Groups;
 use PHPUnit\Runner\Baseline\CannotLoadBaselineException;
 use PHPUnit\Runner\Baseline\Generator as BaselineGenerator;
 use PHPUnit\Runner\Baseline\Reader;
@@ -65,6 +66,12 @@ use PHPUnit\Runner\GarbageCollection\GarbageCollectionHandler;
 use PHPUnit\Runner\IssueTriggerResolver\Resolver;
 use PHPUnit\Runner\PhpConfiguration\PhpConfigurationChecker;
 use PHPUnit\Runner\Phpt\TestCase as PhptTestCase;
+use PHPUnit\Runner\TestIndex\DefaultTestFileSkipper;
+use PHPUnit\Runner\TestIndex\GroupPruner;
+use PHPUnit\Runner\TestIndex\NameFilterPruner;
+use PHPUnit\Runner\TestIndex\NullTestFileSkipper;
+use PHPUnit\Runner\TestIndex\TestFileSkipper;
+use PHPUnit\Runner\TestIndex\TestIndex;
 use PHPUnit\Runner\TestRunHistory\DefaultTestRunHistory;
 use PHPUnit\Runner\TestRunHistory\NullTestRunHistory;
 use PHPUnit\Runner\TestRunHistory\TestRunHistory;
@@ -210,7 +217,7 @@ final readonly class Application
 
             ErrorHandler::instance()->registerForNonTestCaseContext();
 
-            $testSuite = $this->buildTestSuite($configuration);
+            $testSuite = $this->buildTestSuite($configuration, $cliConfiguration);
 
             if ($configuration->hasTestIdFilterFile() && !is_file($configuration->testIdFilterFile())) {
                 $this->exitWithErrorMessage(
@@ -225,7 +232,13 @@ final readonly class Application
 
             $this->executeCommandsThatRequireTheTestSuite($configuration, $cliConfiguration, $testSuite);
 
-            if ($testSuite->isEmpty() && !$configuration->hasCliArguments() && $configuration->testSuite()->isEmpty()) {
+            /*
+             * The help is only shown when no tests were selected at all. Tests
+             * that were selected but did not end up in the test suite are not
+             * the same thing: naming a file that contains no test, or a test
+             * file that does not have to be loaded, is not a usage error.
+             */
+            if ($testSuite->isEmpty() && !$configuration->hasCliArguments() && !$configuration->hasTestFilesFile() && $configuration->testSuite()->isEmpty()) {
                 $this->execute(new ShowHelpCommand(Result::FAILURE));
             }
 
@@ -371,8 +384,10 @@ final readonly class Application
                 $resultCollectedFromEvents = TestResultFacade::result();
 
                 $errored = $resultCollectedFromEvents->hasTestTriggeredPhpunitErrorEvents();
+                // @codeCoverageIgnoreStart
             } catch (EventFacadeIsSealedException|UnknownSubscriberTypeException) {
             }
+            // @codeCoverageIgnoreEnd
         }
 
         print Version::getVersionString() . PHP_EOL . PHP_EOL;
@@ -425,10 +440,10 @@ final readonly class Application
         }
     }
 
-    private function buildTestSuite(Configuration $configuration): TestSuite
+    private function buildTestSuite(Configuration $configuration, CliConfiguration $cliConfiguration): TestSuite
     {
         try {
-            return (new TestSuiteBuilder)->build($configuration);
+            return new TestSuiteBuilder($this->initializeTestIndex($configuration, $cliConfiguration))->build($configuration);
         } catch (Exception $e) {
             $this->exitWithErrorMessage($e->getMessage());
         }
@@ -466,9 +481,11 @@ final readonly class Application
 
             $resolved = realpath($configurationFile);
 
+            // @codeCoverageIgnoreStart
             if ($resolved === false) {
                 $this->exitWithErrorMessage('Configuration file cannot be migrated');
             }
+            // @codeCoverageIgnoreEnd
 
             $this->execute(new MigrateConfigurationCommand($resolved));
         }
@@ -480,9 +497,11 @@ final readonly class Application
 
             $resolved = realpath($configurationFile);
 
+            // @codeCoverageIgnoreStart
             if ($resolved === false) {
                 $this->exitWithErrorMessage('Configuration file cannot be validated');
             }
+            // @codeCoverageIgnoreEnd
 
             $this->execute(new ValidateConfigurationCommand($resolved));
         }
@@ -746,6 +765,109 @@ final readonly class Application
         return null;
     }
 
+    /**
+     * The index is only usable when there is somewhere to keep it, and it can
+     * only save work when tests are selected by group: it answers whether a
+     * test file can contribute a test to the run, which is a question only a
+     * selection by group can answer without loading the file.
+     */
+    private function initializeTestIndex(Configuration $configuration, CliConfiguration $cliConfiguration): TestFileSkipper
+    {
+        if (!$configuration->cacheTestIndex()) {
+            return new NullTestFileSkipper;
+        }
+
+        /*
+         * --list-suites reports how many tests each test suite has, and does so
+         * for every test the suite has: it ignores the options that select
+         * tests. Pruning test files by those very options would make it report
+         * a different number of tests once the index exists.
+         */
+        if ($cliConfiguration->listSuites()) {
+            return new NullTestFileSkipper;
+        }
+
+        if (!$configuration->hasCacheDirectory()) {
+            EventFacade::emitter()->testRunnerTriggeredPhpunitWarning(
+                'Cannot cache the test index because no cache directory is configured',
+            );
+
+            return new NullTestFileSkipper;
+        }
+
+        $index = new TestIndex($configuration->cacheDirectory());
+
+        $index->load();
+
+        if ($configuration->hasFilter()) {
+            $nameFilterPruner = NameFilterPruner::fromFilter($configuration->filter());
+        } else {
+            $nameFilterPruner = NameFilterPruner::withoutFilter();
+        }
+
+        if ($configuration->hasExcludeGroups()) {
+            $excludedGroups = $configuration->excludeGroups();
+        } else {
+            $excludedGroups = [];
+        }
+
+        return new DefaultTestFileSkipper(
+            EventFacade::instance(),
+            $index,
+            new GroupPruner(
+                $this->includedGroups($configuration),
+                $excludedGroups,
+            ),
+            $nameFilterPruner,
+        );
+    }
+
+    /**
+     * The groups a test can be in for its test file to be worth loading.
+     *
+     * TestSuiteFilterProcessor selects by these same groups, but it adds a
+     * filter of its own for --group, for --covers, for --uses, and for
+     * --requires-php-extension: a test has to be in a group from every one of
+     * the options that were used. The pruner has them all in one list and asks
+     * only whether a test is in any of them, so it keeps files that the filters
+     * go on to take every test from.
+     *
+     * That is the direction in which the index has to be wrong: leaving work
+     * for the filters costs no more than the time it takes, while pruning a
+     * file that has a test the filters would select would change which tests
+     * are run.
+     *
+     * @return list<non-empty-string>
+     */
+    private function includedGroups(Configuration $configuration): array
+    {
+        $groups = [];
+
+        if ($configuration->hasGroups()) {
+            $groups = $configuration->groups();
+        }
+
+        if ($configuration->hasTestsCovering()) {
+            foreach ($configuration->testsCovering() as $name) {
+                $groups[] = Groups::virtualGroupForCovers($name);
+            }
+        }
+
+        if ($configuration->hasTestsUsing()) {
+            foreach ($configuration->testsUsing() as $name) {
+                $groups[] = Groups::virtualGroupForUses($name);
+            }
+        }
+
+        if ($configuration->hasTestsRequiringPhpExtension()) {
+            foreach ($configuration->testsRequiringPhpExtension() as $name) {
+                $groups[] = Groups::virtualGroupForRequiredPhpExtension($name);
+            }
+        }
+
+        return $groups;
+    }
+
     private function initializeTestRunHistory(Configuration $configuration): TestRunHistory
     {
         if ($configuration->recordTestRunHistory()) {
@@ -808,9 +930,11 @@ final readonly class Application
             return false;
         }
 
+        // @codeCoverageIgnoreStart
         if ($configuration->hasDefaultTestSuite() && count($configuration->testSuite()) > 1) {
             return false;
         }
+        // @codeCoverageIgnoreEnd
 
         return true;
     }
@@ -833,9 +957,11 @@ final readonly class Application
             } catch (CannotLoadBaselineException $e) {
                 $message = $e->getMessage();
 
+                // @codeCoverageIgnoreStart
                 if ($message === '') {
                     $message = 'Cannot load baseline';
                 }
+                // @codeCoverageIgnoreEnd
 
                 EventFacade::emitter()->testRunnerTriggeredPhpunitWarning($message);
             }
@@ -1097,26 +1223,34 @@ final readonly class Application
 
         $composerInstall = PHPUNIT_COMPOSER_INSTALL;
 
+        // @codeCoverageIgnoreStart
         if (!is_string($composerInstall)) {
             return;
         }
+        // @codeCoverageIgnoreEnd
 
         $classMapFile = dirname($composerInstall) . '/composer/autoload_classmap.php';
 
+        // @codeCoverageIgnoreStart
         if (!is_file($classMapFile)) {
             return;
         }
+        // @codeCoverageIgnoreEnd
 
         $classMap = require $classMapFile;
 
+        // @codeCoverageIgnoreStart
         if (!is_array($classMap)) {
             return;
         }
+        // @codeCoverageIgnoreEnd
 
         foreach ($classMap as $codeUnitName => $sourceCodeFile) {
+            // @codeCoverageIgnoreStart
             if (!is_string($codeUnitName) || !is_string($sourceCodeFile)) {
                 continue;
             }
+            // @codeCoverageIgnoreEnd
 
             if (!str_starts_with($codeUnitName, 'PHPUnit\\') &&
                 !str_starts_with($codeUnitName, 'SebastianBergmann\\')) {

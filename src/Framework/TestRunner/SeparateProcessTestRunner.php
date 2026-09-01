@@ -15,6 +15,7 @@ use function defined;
 use function get_include_path;
 use function hrtime;
 use function random_bytes;
+use function register_shutdown_function;
 use function serialize;
 use function sprintf;
 use function sys_get_temp_dir;
@@ -44,7 +45,8 @@ use SebastianBergmann\Template\Template;
  */
 final class SeparateProcessTestRunner
 {
-    private static ?string $sourceMapFile = null;
+    private static ?string $configurationFile = null;
+    private static ?string $sourceMapFile     = null;
 
     /**
      * @throws \PHPUnit\Runner\Exception
@@ -89,14 +91,22 @@ final class SeparateProcessTestRunner
 
         $coverage = CodeCoverage::instance()->isActive() ? 'true' : 'false';
 
+        // the branches below that are excluded from code coverage are only
+        // taken when PHPUnit is used from its PHAR distribution, whereas code
+        // coverage is only collected when PHPUnit is used from a Composer
+        // installation
         if (defined('PHPUNIT_COMPOSER_INSTALL')) {
             $composerAutoload = var_export(PHPUNIT_COMPOSER_INSTALL, true);
         } else {
+            // @codeCoverageIgnoreStart
             $composerAutoload = '\'\'';
+            // @codeCoverageIgnoreEnd
         }
 
         if (defined('__PHPUNIT_PHAR__')) {
+            // @codeCoverageIgnoreStart
             $phar = var_export(__PHPUNIT_PHAR__, true);
+            // @codeCoverageIgnoreEnd
         } else {
             $phar = '\'\'';
         }
@@ -112,8 +122,8 @@ final class SeparateProcessTestRunner
         $dependencyInput         = "'." . $dependencyInput . ".'";
         $includePath             = "'." . $includePath . ".'";
         $offset                  = hrtime();
-        $serializedConfiguration = $this->saveConfigurationForChildProcess();
-        $processResultFile       = $this->pathForCachedSourceMap();
+        $serializedConfiguration = $this->configurationFileForChildProcess();
+        $processResultFile       = $this->createTemporaryFile();
 
         if ($processResultFile === false || $processResultFile === '') {
             // @codeCoverageIgnoreStart
@@ -166,8 +176,6 @@ final class SeparateProcessTestRunner
         assert($code !== '');
 
         JobRunnerRegistry::runTestJob(new Job($code, ChildProcessReason::TestRequiringProcessIsolation, requiresXdebug: $requiresXdebug), $processResultFile, $test, $processResultNonce);
-
-        @unlink($serializedConfiguration);
     }
 
     private function sourceMapFileForChildProcess(): string
@@ -182,7 +190,16 @@ final class SeparateProcessTestRunner
             return self::$sourceMapFile;
         }
 
-        $path = $this->pathForCachedSourceMap();
+        // the child process only needs the source map for the identification of
+        // issue triggers and for the code coverage filter
+        if (!ConfigurationRegistry::get()->source()->identifyIssueTrigger() &&
+            !CodeCoverage::instance()->isActive()) {
+            self::$sourceMapFile = '';
+
+            return self::$sourceMapFile;
+        }
+
+        $path = $this->createTemporaryFileSharedByChildProcesses();
 
         if ($path === false) {
             // @codeCoverageIgnoreStart
@@ -208,9 +225,13 @@ final class SeparateProcessTestRunner
     /**
      * @throws ProcessIsolationException
      */
-    private function saveConfigurationForChildProcess(): string
+    private function configurationFileForChildProcess(): string
     {
-        $path = $this->pathForCachedSourceMap();
+        if (self::$configurationFile !== null) {
+            return self::$configurationFile;
+        }
+
+        $path = $this->createTemporaryFileSharedByChildProcesses();
 
         if ($path === false) {
             // @codeCoverageIgnoreStart
@@ -224,11 +245,42 @@ final class SeparateProcessTestRunner
             // @codeCoverageIgnoreEnd
         }
 
-        return $path;
+        self::$configurationFile = $path;
+
+        return self::$configurationFile;
     }
 
-    private function pathForCachedSourceMap(): false|string
+    private function createTemporaryFile(): false|string
     {
         return tempnam(sys_get_temp_dir(), 'phpunit_');
+    }
+
+    /**
+     * The configuration and the source map do not change while the test run is
+     * in progress: each is written once and shared by all child processes, so
+     * neither can be removed before the test run has ended.
+     */
+    private function createTemporaryFileSharedByChildProcesses(): false|string
+    {
+        $path = $this->createTemporaryFile();
+
+        if ($path === false) {
+            // @codeCoverageIgnoreStart
+            return false;
+            // @codeCoverageIgnoreEnd
+        }
+
+        register_shutdown_function(
+            static function () use ($path): void
+            {
+                // this runs during PHP's shutdown sequence, after code coverage
+                // data has been collected
+                // @codeCoverageIgnoreStart
+                @unlink($path);
+                // @codeCoverageIgnoreEnd
+            },
+        );
+
+        return $path;
     }
 }

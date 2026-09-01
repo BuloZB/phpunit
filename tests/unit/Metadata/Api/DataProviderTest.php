@@ -11,11 +11,14 @@ namespace PHPUnit\Metadata\Api;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RequiresPhp;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\InvalidDataProviderException;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\TestFixture\DuplicateKeyDataProvidersTest;
 use PHPUnit\TestFixture\DuplicateKeyDataProviderTest;
+use PHPUnit\TestFixture\EmptyStringKeyDataProviderClosureTest;
+use PHPUnit\TestFixture\EmptyStringKeyDataProviderTest;
 use PHPUnit\TestFixture\MultipleDataProviderTest;
 use PHPUnit\TestFixture\TestWithAttributeDataProviderTest;
 use PHPUnit\TestFixture\VariousIterableDataProviderTest;
@@ -177,6 +180,25 @@ final class DataProviderTest extends TestCase
 
         /* @noinspection UnusedFunctionResultInspection */
         (new DataProvider)->providedData(DuplicateKeyDataProviderTest::class, 'test');
+    }
+
+    public function testWithEmptyStringKeyDataProvider(): void
+    {
+        $this->expectException(InvalidDataProviderException::class);
+        $this->expectExceptionMessageIs('The key must not be an empty string');
+
+        /* @noinspection UnusedFunctionResultInspection */
+        (new DataProvider)->providedData(EmptyStringKeyDataProviderTest::class, 'test');
+    }
+
+    #[RequiresPhp('^8.5')]
+    public function testWithEmptyStringKeyDataProviderClosure(): void
+    {
+        $this->expectException(InvalidDataProviderException::class);
+        $this->expectExceptionMessageIs('The key must not be an empty string');
+
+        /* @noinspection UnusedFunctionResultInspection */
+        (new DataProvider)->providedData(EmptyStringKeyDataProviderClosureTest::class, 'test');
     }
 
     public function testTestWithAttribute(): void

@@ -224,7 +224,9 @@ final readonly class GlobalState
             }
 
             if ($prefix !== false && str_starts_with($file, $prefix)) {
+                // @codeCoverageIgnoreStart
                 continue;
+                // @codeCoverageIgnoreEnd
             }
 
             // Skip virtual file system protocols
@@ -233,7 +235,7 @@ final readonly class GlobalState
             }
 
             if (!$excludeList->isExcluded($file) && is_file($file)) {
-                $result = 'require_once \'' . $file . "';\n" . $result;
+                $result = 'require_once ' . var_export($file, true) . ";\n" . $result;
             }
         }
 

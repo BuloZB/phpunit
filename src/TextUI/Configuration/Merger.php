@@ -79,6 +79,12 @@ final readonly class Merger
             $recordTestRunHistory = $xmlConfiguration->phpunit()->recordTestRunHistory();
         }
 
+        if ($cliConfiguration->hasCacheTestIndex()) {
+            $cacheTestIndex = $cliConfiguration->cacheTestIndex();
+        } else {
+            $cacheTestIndex = $xmlConfiguration->phpunit()->cacheTestIndex();
+        }
+
         if ($cliConfiguration->hasWarnWhenPhpIsNotConfiguredForDevelopment()) {
             $warnWhenPhpIsNotConfiguredForDevelopment = $cliConfiguration->warnWhenPhpIsNotConfiguredForDevelopment();
         } else {
@@ -94,9 +100,11 @@ final readonly class Merger
             $cacheDirectory = realpath($xmlConfiguration->phpunit()->cacheDirectory());
         }
 
+        // @codeCoverageIgnoreStart
         if ($cacheDirectory === false) {
             $cacheDirectory = null;
         }
+        // @codeCoverageIgnoreEnd
 
         if ($cacheDirectory !== null) {
             $coverageCacheDirectory = $cacheDirectory . DIRECTORY_SEPARATOR . 'code-coverage';
@@ -109,9 +117,11 @@ final readonly class Merger
 
                 if ($configurationFileRealpath !== false) {
                     $testRunHistoryFile = dirname($configurationFileRealpath) . DIRECTORY_SEPARATOR . '.phpunit.result.cache';
+                    // @codeCoverageIgnoreStart
                 } else {
                     $testRunHistoryFile = '.phpunit.result.cache';
                 }
+                // @codeCoverageIgnoreEnd
             } else {
                 $phpSelf = null;
 
@@ -558,6 +568,7 @@ final readonly class Merger
         $coverageHtmlColorBreadcrumbs       = $defaultColors->breadcrumbs();
         $coverageHtmlColorBreadcrumbsDark   = $defaultColors->breadcrumbsDark();
         $coverageHtmlCustomCssFile          = null;
+        $coverageJsonl                      = null;
         $coverageOpenClover                 = null;
         $coveragePhp                        = null;
         $coverageText                       = null;
@@ -651,6 +662,12 @@ final readonly class Merger
 
             $coverageHtmlClassView = true;
             $coverageHtmlFileView  = true;
+        }
+
+        if ($cliConfiguration->hasCoverageJsonl()) {
+            $coverageJsonl = $cliConfiguration->coverageJsonl();
+        } elseif ($coverageFromXmlConfiguration && $xmlConfiguration->codeCoverage()->hasJsonl()) {
+            $coverageJsonl = $xmlConfiguration->codeCoverage()->jsonl()->target()->path();
         }
 
         if ($cliConfiguration->hasCoverageOpenClover()) {
@@ -1234,6 +1251,7 @@ final readonly class Merger
         $coverageHtmlColorDangerBarDark     = $this->requireNonEmptyString($coverageHtmlColorDangerBarDark, 'coverage HTML color "danger bar dark"');
         $coverageHtmlColorBreadcrumbs       = $this->requireNonEmptyString($coverageHtmlColorBreadcrumbs, 'coverage HTML color "breadcrumbs"');
         $coverageHtmlColorBreadcrumbsDark   = $this->requireNonEmptyString($coverageHtmlColorBreadcrumbsDark, 'coverage HTML color "breadcrumbs dark"');
+        $coverageJsonl                      = $this->nullableNonEmptyString($coverageJsonl);
         $coverageOpenClover                 = $this->nullableNonEmptyString($coverageOpenClover);
         $coveragePhp                        = $this->nullableNonEmptyString($coveragePhp);
         $coverageText                       = $this->nullableNonEmptyString($coverageText);
@@ -1259,9 +1277,11 @@ final readonly class Merger
         $normalizedGroups = [];
 
         foreach ($groups as $group) {
+            // @codeCoverageIgnoreStart
             if ($group === '') {
                 continue;
             }
+            // @codeCoverageIgnoreEnd
 
             $normalizedGroups[] = $group;
         }
@@ -1271,9 +1291,11 @@ final readonly class Merger
         $normalizedExcludeGroups = [];
 
         foreach ($excludeGroups as $excludeGroup) {
+            // @codeCoverageIgnoreStart
             if ($excludeGroup === '') {
                 continue;
             }
+            // @codeCoverageIgnoreEnd
 
             $normalizedExcludeGroups[] = $excludeGroup;
         }
@@ -1342,6 +1364,7 @@ final readonly class Merger
             $coverageHtmlColorBreadcrumbs,
             $coverageHtmlColorBreadcrumbsDark,
             $coverageHtmlCustomCssFile,
+            $coverageJsonl,
             $coverageOpenClover,
             $coveragePhp,
             $coverageText,
@@ -1482,6 +1505,7 @@ final readonly class Merger
             $cliConfiguration->withTelemetry(),
             $xmlConfiguration->phpunit()->shortenArraysForExportThreshold(),
             $warnWhenPhpIsNotConfiguredForDevelopment,
+            $cacheTestIndex,
         );
     }
 
@@ -1504,9 +1528,11 @@ final readonly class Merger
      */
     private function requireNonEmptyString(string $value, string $context): string
     {
+        // @codeCoverageIgnoreStart
         if ($value === '') {
             throw new LogicException(sprintf('"%s" must not be empty', $context));
         }
+        // @codeCoverageIgnoreEnd
 
         return $value;
     }

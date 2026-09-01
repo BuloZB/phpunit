@@ -15,7 +15,6 @@ require_once __DIR__ . '/../../../bootstrap.php';
 
 (new PHPUnit\TextUI\Application)->run($_SERVER['argv']);
 --EXPECTF--
---EXPECTF--
 PHPUnit %s by Sebastian Bergmann and contributors.
 
 Runtime: %s

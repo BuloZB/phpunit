@@ -164,6 +164,8 @@
 
   [32m--record-test-run-history           [0m Record test run history
   [32m--do-not-record-test-run-history    [0m Do not record test run history
+  [32m--cache-test-index                  [0m Write test index to cache file
+  [32m--do-not-cache-test-index           [0m Do not write test index to cache file
 
   [32m--warn-when-php-is-not-configured-for-development[0m
                                        Trigger a test runner warning when PHP
@@ -269,6 +271,8 @@
                                        format without class view
   [32m--without-file-view                 [0m Render code coverage report in HTML
                                        format without file view
+  [32m--coverage-jsonl [36m<dir>[0m              [0m Write code coverage report in JSONL
+                                       format to directory
   [32m--coverage-php [36m<file>[0m               [0m Write serialized code coverage data to
                                        file
   [32m--coverage-text=[36m<file>[0m              [0m Write code coverage report in text

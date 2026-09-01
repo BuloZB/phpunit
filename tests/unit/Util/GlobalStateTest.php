@@ -9,10 +9,15 @@
  */
 namespace PHPUnit\Util;
 
+use function file_put_contents;
 use function sprintf;
+use function sys_get_temp_dir;
+use function unlink;
+use function var_export;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 
 #[CoversClass(GlobalState::class)]
 #[CoversClass(GlobalStateResult::class)]
@@ -30,11 +35,35 @@ final class GlobalStateTest extends TestCase
             'file://' . $dir . '/XmlTest.php',
         ];
 
-        $this->assertEquals(
-            "require_once '" . $dir . "/GlobalStateTest.php';\n" .
-            "require_once 'file://" . $dir . "/XmlTest.php';\n",
+        $this->assertSame(
+            'require_once ' . var_export($dir . '/GlobalStateTest.php', true) . ";\n" .
+            'require_once ' . var_export('file://' . $dir . '/XmlTest.php', true) . ";\n",
             GlobalState::processIncludedFilesAsString($files),
         );
+    }
+
+    public function testIncludedFilesAsStringEscapesSpecialCharactersInPaths(): void
+    {
+        $path = sys_get_temp_dir() . "/A' . file_put_contents('x', 'y') . 'Test.php";
+
+        file_put_contents($path, '<?php');
+
+        try {
+            $result = GlobalState::processIncludedFilesAsString(['phpunit', $path]);
+
+            $this->assertSame(
+                'require_once ' . var_export($path, true) . ";\n",
+                $result,
+            );
+
+            $extracted = null;
+
+            eval('$extracted = ' . var_export($path, true) . ';');
+
+            $this->assertSame($path, $extracted);
+        } finally {
+            unlink($path);
+        }
     }
 
     public function testClosureGlobalIsSkippedAndReported(): void
@@ -85,6 +114,59 @@ final class GlobalStateTest extends TestCase
             }
         } finally {
             unset($GLOBALS['__test_scalar']);
+        }
+    }
+
+    public function testNestedArrayGlobalIsPreserved(): void
+    {
+        $GLOBALS['__test_nested_array'] = ['outer' => ['inner' => 'value']];
+
+        try {
+            $result = GlobalState::exportGlobals();
+
+            $this->assertStringContainsString('__test_nested_array', $result->globalsString());
+            $this->assertStringContainsString("'value'", $result->globalsString());
+
+            foreach ($result->skippedGlobals() as $skipped) {
+                $this->assertStringNotContainsString('__test_nested_array', $skipped['name']);
+            }
+        } finally {
+            unset($GLOBALS['__test_nested_array']);
+        }
+    }
+
+    public function testClosureInSuperGlobalArrayIsSkippedAndReported(): void
+    {
+        $_ENV['__test_closure'] = static function (): string
+        {
+            return 'test';
+        };
+
+        try {
+            $result = GlobalState::exportGlobals();
+
+            $this->assertStringNotContainsString('__test_closure', $result->globalsString());
+            $this->assertTrue($result->hasSkippedGlobals());
+            $this->assertSkippedGlobal($result, '$GLOBALS[\'_ENV\'][\'__test_closure\']', 'is a Closure');
+        } finally {
+            unset($_ENV['__test_closure']);
+        }
+    }
+
+    public function testUnserializableValueInSuperGlobalArrayIsSkippedAndReported(): void
+    {
+        $value                         = new stdClass;
+        $value->closure                = static fn (): int => 1;
+        $_ENV['__test_unserializable'] = $value;
+
+        try {
+            $result = GlobalState::exportGlobals();
+
+            $this->assertStringNotContainsString('__test_unserializable', $result->globalsString());
+            $this->assertTrue($result->hasSkippedGlobals());
+            $this->assertSkippedGlobal($result, '$GLOBALS[\'_ENV\'][\'__test_unserializable\']', 'is not serializable');
+        } finally {
+            unset($_ENV['__test_unserializable']);
         }
     }
 

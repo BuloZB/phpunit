@@ -80,7 +80,7 @@ final class CodeCoverage
 
     public function init(Configuration $configuration, CodeCoverageFilterRegistry $codeCoverageFilterRegistry, bool $extensionRequiresCodeCoverageCollection): CodeCoverageInitializationStatus
     {
-        $codeCoverageFilterRegistry->init($configuration);
+        $codeCoverageFilterRegistry->init($configuration, $extensionRequiresCodeCoverageCollection);
 
         if (!$configuration->hasCoverageReport() && !$extensionRequiresCodeCoverageCollection) {
             return CodeCoverageInitializationStatus::NOT_REQUESTED;
@@ -346,6 +346,18 @@ final class CodeCoverage
 
             try {
                 $facade->renderClover($configuration->coverageClover(), 'Clover Coverage');
+
+                $this->codeCoverageGenerationSucceeded($printer);
+            } catch (CodeCoverageException $e) {
+                $this->codeCoverageGenerationFailed($printer, $e);
+            }
+        }
+
+        if ($configuration->hasCoverageJsonl()) {
+            $this->codeCoverageGenerationStart($printer, 'JSONL');
+
+            try {
+                $facade->renderJsonl($configuration->coverageJsonl());
 
                 $this->codeCoverageGenerationSucceeded($printer);
             } catch (CodeCoverageException $e) {

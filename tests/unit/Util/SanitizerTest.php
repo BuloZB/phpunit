@@ -9,8 +9,12 @@
  */
 namespace PHPUnit\Util;
 
+use function ini_set;
+use function is_string;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\PreserveGlobalState;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
@@ -48,5 +52,32 @@ final class SanitizerTest extends TestCase
     public function testSanitizesBidirectionalControlCharacters(string $input, string $expected): void
     {
         $this->assertSame($expected, Sanitizer::sanitizeBidirectionalControlCharacters($input));
+    }
+
+    /**
+     * The regular expression used by the sanitizer does not backtrack when it is
+     * executed by the PCRE JIT compiler. Therefore, the JIT compiler has to be
+     * disabled before the regular expression is compiled and cached so that
+     * lowering the backtrack limit makes preg_replace_callback() fail.
+     *
+     * The backtrack limit affects every regular expression that is evaluated
+     * afterwards, including the ones used by PHPUnit itself. It therefore has to
+     * be restored before this test method returns.
+     */
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testReturnsValueUnchangedWhenSanitizationFails(): void
+    {
+        ini_set('pcre.jit', '0');
+
+        $backtrackLimit = ini_set('pcre.backtrack_limit', '1');
+
+        $sanitized = Sanitizer::sanitizeBidirectionalControlCharacters("a\u{202A}b");
+
+        if (is_string($backtrackLimit)) {
+            ini_set('pcre.backtrack_limit', $backtrackLimit);
+        }
+
+        $this->assertSame("a\u{202A}b", $sanitized);
     }
 }

@@ -11,10 +11,6 @@ class ComposerStaticInitf9e7218f71d5874b5632927df4f72bd7
     );
 
     public static $prefixLengthsPsr4 = array (
-        'T' =>
-        array (
-            'TomasVotruba\\TypeCoverage\\' => 26,
-        ),
         'P' =>
         array (
             'PHPStan\\ExtensionInstaller\\' => 27,
@@ -27,10 +23,6 @@ class ComposerStaticInitf9e7218f71d5874b5632927df4f72bd7
     );
 
     public static $prefixDirsPsr4 = array (
-        'TomasVotruba\\TypeCoverage\\' =>
-        array (
-            0 => __DIR__ . '/..' . '/tomasvotruba/type-coverage/src',
-        ),
         'PHPStan\\ExtensionInstaller\\' =>
         array (
             0 => __DIR__ . '/..' . '/phpstan/extension-installer/src',

@@ -21,7 +21,7 @@ Time: %s, Memory: %s
 There was 1 failure:
 
 1) %sphpt-expectregex-failure.phpt
-Failed asserting that 'this does not match' matches PCRE pattern "/^completely different pattern [0-9]+$/".
+Failed asserting that 'this does not match' matches PCRE pattern "/^completely different pattern [0-9]+$/s".
 
 %sphpt-expectregex-failure.phpt:%d
 

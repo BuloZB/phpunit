@@ -230,6 +230,35 @@ final class BuilderTest extends TestCase
         $configuration->recordTestRunHistory();
     }
 
+    #[TestDox('--cache-test-index')]
+    public function testCacheTestIndex(): void
+    {
+        $configuration = (new Builder)->fromParameters(['--cache-test-index']);
+
+        $this->assertTrue($configuration->hasCacheTestIndex());
+        $this->assertTrue($configuration->cacheTestIndex());
+    }
+
+    #[TestDox('--do-not-cache-test-index')]
+    public function testDoNotCacheTestIndex(): void
+    {
+        $configuration = (new Builder)->fromParameters(['--do-not-cache-test-index']);
+
+        $this->assertTrue($configuration->hasCacheTestIndex());
+        $this->assertFalse($configuration->cacheTestIndex());
+    }
+
+    public function testCacheTestIndexMayNotBeConfigured(): void
+    {
+        $configuration = (new Builder)->fromParameters([]);
+
+        $this->assertFalse($configuration->hasCacheTestIndex());
+
+        $this->expectException(Exception::class);
+
+        $configuration->cacheTestIndex();
+    }
+
     #[TestDox('--columns <n>')]
     public function testColumnsNumber(): void
     {
@@ -341,6 +370,26 @@ final class BuilderTest extends TestCase
         $this->expectException(Exception::class);
 
         $configuration->coverageCobertura();
+    }
+
+    #[TestDox('--coverage-jsonl directory')]
+    public function testCoverageJsonl(): void
+    {
+        $configuration = (new Builder)->fromParameters(['--coverage-jsonl', 'directory']);
+
+        $this->assertTrue($configuration->hasCoverageJsonl());
+        $this->assertSame('directory', $configuration->coverageJsonl());
+    }
+
+    public function testCoverageJsonlMayNotBeConfigured(): void
+    {
+        $configuration = (new Builder)->fromParameters([]);
+
+        $this->assertFalse($configuration->hasCoverageJsonl());
+
+        $this->expectException(Exception::class);
+
+        $configuration->coverageJsonl();
     }
 
     #[TestDox('--coverage-crap4j file')]
@@ -3245,5 +3294,39 @@ final class BuilderTest extends TestCase
         $this->expectExceptionMessageIs('Options --check-version and --help cannot be used together');
 
         (new Builder)->fromParameters(['--check-version', '--help']);
+    }
+
+    public function testEmptyArgumentsAreIgnored(): void
+    {
+        $configuration = (new Builder)->fromParameters(['command', '', 'argument']);
+
+        $this->assertSame(['argument'], $configuration->arguments());
+    }
+
+    #[TestDox('--group requires a non-empty value')]
+    public function testOptionThatRequiresNonEmptyValueRejectsEmptyValue(): void
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessageIs('Option --group requires a non-empty value');
+
+        (new Builder)->fromParameters(['--group', '']);
+    }
+
+    #[TestDox('--diff-context requires a numeric value')]
+    public function testOptionThatRequiresPositiveIntegerValueRejectsValueThatIsNotNumeric(): void
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessageIs('Option --diff-context requires a positive integer value');
+
+        (new Builder)->fromParameters(['--diff-context', 'not-a-number']);
+    }
+
+    #[TestDox('--diff-context requires a positive value')]
+    public function testOptionThatRequiresPositiveIntegerValueRejectsValueThatIsNotPositive(): void
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessageIs('Option --diff-context requires a positive integer value');
+
+        (new Builder)->fromParameters(['--diff-context', '0']);
     }
 }

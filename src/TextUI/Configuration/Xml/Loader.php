@@ -67,6 +67,7 @@ use PHPUnit\TextUI\XmlConfiguration\CodeCoverage\Report\Clover;
 use PHPUnit\TextUI\XmlConfiguration\CodeCoverage\Report\Cobertura;
 use PHPUnit\TextUI\XmlConfiguration\CodeCoverage\Report\Crap4j;
 use PHPUnit\TextUI\XmlConfiguration\CodeCoverage\Report\Html as CodeCoverageHtml;
+use PHPUnit\TextUI\XmlConfiguration\CodeCoverage\Report\Jsonl;
 use PHPUnit\TextUI\XmlConfiguration\CodeCoverage\Report\OpenClover;
 use PHPUnit\TextUI\XmlConfiguration\CodeCoverage\Report\Php as CodeCoveragePhp;
 use PHPUnit\TextUI\XmlConfiguration\CodeCoverage\Report\Text as CodeCoverageText;
@@ -110,6 +111,7 @@ final readonly class Loader
 
         try {
             $xsdFilename = (new SchemaFinder)->find(Version::series());
+            // @codeCoverageIgnoreStart
         } catch (CannotFindSchemaException $e) {
             throw new Exception(
                 $e->getMessage(),
@@ -117,6 +119,7 @@ final readonly class Loader
                 $e,
             );
         }
+        // @codeCoverageIgnoreEnd
 
         $configurationFileRealpath = realpath($filename);
 
@@ -584,6 +587,20 @@ final readonly class Loader
             );
         }
 
+        $jsonl   = null;
+        $element = $this->element($xpath, 'coverage/report/jsonl');
+
+        if ($element !== null) {
+            $jsonl = new Jsonl(
+                new Directory(
+                    $this->toAbsolutePath(
+                        $filename,
+                        (string) $this->parseStringAttribute($element, 'outputDirectory'),
+                    ),
+                ),
+            );
+        }
+
         $openClover = null;
         $element    = $this->element($xpath, 'coverage/report/openclover');
 
@@ -654,6 +671,7 @@ final readonly class Loader
             $cobertura,
             $crap4j,
             $html,
+            $jsonl,
             $openClover,
             $php,
             $text,
@@ -927,9 +945,11 @@ final readonly class Loader
      */
     private function parseColorAttributeWithDefault(DOMElement $element, string $attribute, string $default): string
     {
+        // @codeCoverageIgnoreStart
         if ($default === '') {
             throw new Exception(sprintf('Default value for "%s" must not be empty', $attribute));
         }
+        // @codeCoverageIgnoreEnd
 
         if (!$element->hasAttribute($attribute)) {
             return $default;
@@ -1309,6 +1329,7 @@ final readonly class Loader
             $shortenArraysForExportThreshold,
             $this->parsePositiveIntegerAttribute($documentElement, 'diffContext', 3),
             $this->parseBooleanAttribute($documentElement, 'warnWhenPhpIsNotConfiguredForDevelopment', false),
+            $this->parseBooleanAttribute($documentElement, 'cacheTestIndex', false),
         );
     }
 
@@ -1589,12 +1610,16 @@ final readonly class Loader
         foreach ($schemaFinder->available() as $version) {
             try {
                 $xsdFilename = $schemaFinder->find($version);
+                // @codeCoverageIgnoreStart
             } catch (CannotFindSchemaException) {
                 continue;
             }
+            // @codeCoverageIgnoreEnd
 
             if (!$validator->validate($document, $xsdFilename)->hasValidationErrors()) {
+                // @codeCoverageIgnoreStart
                 return;
+                // @codeCoverageIgnoreEnd
             }
         }
 

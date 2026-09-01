@@ -2,7 +2,7 @@
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
     <xs:annotation>
         <xs:documentation source="https://phpunit.de/documentation.html">
-            This Schema file defines the rules by which the XML configuration file of PHPUnit 13.3 may be structured.
+            This Schema file defines the rules by which the XML configuration file of PHPUnit 13.4 may be structured.
         </xs:documentation>
         <xs:appinfo source="https://phpunit.de/documentation.html"/>
     </xs:annotation>
@@ -214,6 +214,7 @@
             </xs:annotation>
         </xs:attribute>
         <xs:attribute name="recordTestRunHistory" type="xs:boolean" default="true"/>
+        <xs:attribute name="cacheTestIndex" type="xs:boolean" default="false"/>
         <xs:attribute name="colors" type="xs:boolean" default="false"/>
         <xs:attribute name="columns" type="columnsType" default="80"/>
         <xs:attribute name="diffContext" type="xs:integer" default="3"/>
@@ -340,6 +341,7 @@
             <xs:element name="cobertura" type="logToFileType" minOccurs="0"/>
             <xs:element name="crap4j" type="coverageReportCrap4JType" minOccurs="0" />
             <xs:element name="html" type="coverageReportHtmlType" minOccurs="0" />
+            <xs:element name="jsonl" type="logToDirectoryType" minOccurs="0"/>
             <xs:element name="openclover" type="logToFileType" minOccurs="0"/>
             <xs:element name="php" type="logToFileType" minOccurs="0" />
             <xs:element name="text" type="coverageReportTextType" minOccurs="0" />
